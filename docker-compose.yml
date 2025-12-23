@@ -46,7 +46,7 @@ services:
     networks:
       - wa-finance-network
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_PORT:-3306}:3307"
 
   # n8n Workflow Automation
   n8n:
