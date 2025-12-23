@@ -1,0 +1,235 @@
+version: '3.8'
+
+services:
+  # Backend Laravel
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wa-finance-backend
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+      - ./backend/storage:/var/www/storage
+    networks:
+      - wa-finance-network
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-wa_finance}
+      - DB_USERNAME=${DB_USERNAME:-wa_finance}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-change-this-secret-key}
+      - WHATSAPP_BOT_NUMBER=${WHATSAPP_BOT_NUMBER:-6281234567890}
+    depends_on:
+      - mysql
+    # Expose untuk development (di production, hapus ports dan pakai nginx)
+    ports:
+      - "${BACKEND_PORT:-8000}:80"
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: wa-finance-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-wa_finance}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_USER: ${DB_USERNAME:-wa_finance}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - wa-finance-network
+    ports:
+      - "${DB_PORT:-3306}:3306"
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: wa-finance-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      # Database (default MySQL; PostgreSQL opsional via profile)
+      - DB_TYPE=${N8N_DB_TYPE:-mysqldb}
+      # MySQL (aktif secara default)
+      - DB_MYSQLDB_HOST=${N8N_DB_MYSQLDB_HOST:-mysql}
+      - DB_MYSQLDB_PORT=${N8N_DB_MYSQLDB_PORT:-3306}
+      - DB_MYSQLDB_DATABASE=${N8N_DB_MYSQLDB_DATABASE:-n8n}
+      - DB_MYSQLDB_USER=${N8N_DB_MYSQLDB_USER:-n8n}
+      - DB_MYSQLDB_PASSWORD=${N8N_DB_MYSQLDB_PASSWORD:-n8npassword}
+      # PostgreSQL (opsional jika memakai profile postgres)
+      - DB_POSTGRESDB_HOST=${N8N_DB_HOST:-postgres}
+      - DB_POSTGRESDB_PORT=${N8N_DB_PORT:-5432}
+      - DB_POSTGRESDB_DATABASE=${N8N_DB_DATABASE:-n8n}
+      - DB_POSTGRESDB_USER=${N8N_DB_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD:-n8npassword}
+      # Application
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-admin}
+      - N8N_HOST=${N8N_HOST:-n8n}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
+      # Environment variables untuk workflows
+      - BACKEND_URL=${BACKEND_URL:-http://backend}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-change-this-secret-key}
+      - GOWA_URL=${GOWA_URL:-http://gowa:3000}
+      # Timezone
+      - GENERIC_TIMEZONE=${TZ:-Asia/Makassar}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - wa-finance-network
+    depends_on:
+      - mysql
+      - backend
+
+  # PostgreSQL untuk n8n (opsional, hanya jika N8N_DB_TYPE=postgresdb)
+  postgres:
+    image: postgres:15-alpine
+    container_name: wa-finance-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${N8N_DB_DATABASE:-n8n}
+      POSTGRES_USER: ${N8N_DB_USER:-n8n}
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD:-n8npassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wa-finance-network
+    # Hanya start jika N8N_DB_TYPE=postgresdb
+    profiles:
+      - postgres
+
+  # Frontend Svelte (Development - Hot Reload)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wa-finance-frontend
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.js:/app/vite.config.js
+      - ./svelte.config.js:/app/svelte.config.js
+      - ./package.json:/app/package.json
+      - ./jsconfig.json:/app/jsconfig.json
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - wa-finance-network
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=${FRONTEND_API_URL:-http://localhost:8000}
+    profiles:
+      - dev
+
+  # Frontend Production (build static)
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wa-finance-frontend-prod
+    restart: unless-stopped
+    networks:
+      - wa-finance-network
+    # Tidak expose port, dihandle oleh nginx
+    environment:
+      - NODE_ENV=production
+    # Auto-rebuild saat file berubah
+    # Jalankan: docker-compose --profile production watch frontend-prod
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+        - action: rebuild
+          path: ./public
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./vite.config.js
+        - action: rebuild
+          path: ./svelte.config.js
+        - action: rebuild
+          path: ./index.html
+    profiles:
+      - production
+
+  # GoWA WhatsApp Gateway
+  gowa:
+    # Note: Ganti dengan image GoWA yang sesuai atau build dari source
+    # Contoh: jika GoWA ada di Docker Hub atau perlu build custom
+    image: node:20-alpine
+    container_name: wa-finance-gowa
+    restart: unless-stopped
+    working_dir: /app
+    # Jika GoWA perlu di-clone/build, uncomment:
+    # build:
+    #   context: ./gowa
+    #   dockerfile: Dockerfile
+    command: sh -c "echo 'GoWA service - replace with actual GoWA setup' && tail -f /dev/null"
+    ports:
+      - "${GOWA_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${APP_ENV:-production}
+      - PORT=3000
+      # GoWA specific env vars (sesuaikan dengan GoWA docs)
+      - GOWA_WEBHOOK_URL=${GOWA_WEBHOOK_URL:-http://n8n:5678/webhook/wa-in}
+    volumes:
+      - gowa_data:/app
+    networks:
+      - wa-finance-network
+    depends_on:
+      - n8n
+
+  # Nginx Reverse Proxy (untuk production dengan domain)
+  nginx:
+    image: nginx:alpine
+    container_name: wa-finance-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./docker/nginx/logs:/var/log/nginx
+    networks:
+      - wa-finance-network
+    depends_on:
+      - backend
+      - n8n
+      - gowa
+      - frontend-prod
+    # Hanya start di production
+    profiles:
+      - production
+
+networks:
+  wa-finance-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  postgres_data:
+    driver: local
+  n8n_data:
+    driver: local
+  gowa_data:
+    driver: local
+  frontend_node_modules:
+    driver: local
+

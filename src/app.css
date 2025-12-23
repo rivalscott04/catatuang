@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-primary: 'Google Sans Flex', 'Outfit', system-ui, -apple-system, sans-serif;
+  
+  /* Colors */
+  --color-primary: #10B981; /* Emerald 500 - Trustworthy Green */
+  --color-primary-hover: #059669;
+  --color-bg: #F8FAFC; /* Slate 50 */
+  --color-text-heading: #0F172A; /* Slate 900 */
+  --color-text-body: #475569; /* Slate 600 */
+  --color-card-bg: #FFFFFF;
+  --iphone-bezel: #202020;
+  --iphone-frame: #3E3E3E;
+  
+  /* Spacing */
+  --container-width: 1200px;
+  --header-height: 80px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wa-finance-backend
+    container_name: wa-finance-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./storage:/var/www/storage
+    networks:
+      - wa-finance-network
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    container_name: wa-finance-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - wa-finance-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: wa-finance-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wa_finance
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_PASSWORD: password
+      MYSQL_USER: wa_finance
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - wa-finance-network
+
+networks:
+  wa-finance-network:
+    driver: bridge
+
+volumes:
+  dbdata:
+    driver: local
+

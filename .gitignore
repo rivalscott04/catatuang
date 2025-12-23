@@ -1,0 +1,34 @@
+# Environment files
+docker/.env
+backend/.env
+
+# SSL certificates (jangan commit!)
+docker/nginx/ssl/*.crt
+docker/nginx/ssl/*.key
+docker/nginx/ssl/*.pem
+
+# Logs
+docker/nginx/logs/*.log
+
+# Laravel
+backend/vendor/
+backend/node_modules/
+backend/storage/*.key
+backend/.phpunit.result.cache
+
+# Frontend
+node_modules/
+dist/
+
+# n8n data (jika ada di local)
+.n8n/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

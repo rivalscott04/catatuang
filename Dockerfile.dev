@@ -1,0 +1,25 @@
+# Development Dockerfile untuk hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy config files
+COPY vite.config.js ./
+COPY svelte.config.js ./
+COPY jsconfig.json ./
+COPY index.html ./
+
+# Copy source (akan di-mount via volume, tapi perlu ada untuk build)
+COPY src ./src
+COPY public ./public
+
+# Expose Vite dev server port
+EXPOSE 5173
+
+# Start dev server dengan host binding untuk Docker
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+

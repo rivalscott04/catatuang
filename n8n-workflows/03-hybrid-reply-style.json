@@ -1,0 +1,335 @@
+{
+  "name": "WA Finance Bot - Hybrid Reply Style",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-hybrid",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-hybrid",
+      "name": "Webhook (Hybrid)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "wa-hybrid"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize payload from GoWA\nconst phone = ($json.from || $json.phone || \"\").toString().trim();\nconst text = ($json.text || $json.message || \"\").toString();\n\nreturn [{ json: { phone, text } }];"
+      },
+      "id": "normalize",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/internal/users/check-or-create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-user",
+      "name": "Check/Create User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build template by style\nconst style = ($json.data?.response_style || 'santai').toLowerCase();\n\nconst templates = {\n  santai: [\n    'Hai! Ada yang mau dicatat hari ini? Format: jumlah keterangan (contoh: 50k makan siang).',\n    'Halo! Yuk catat transaksi biar gak lupa. Tulis: jumlah keterangan (misal: 100k belanja).'\n  ],\n  netral: [\n    'Silakan catat transaksi dengan format: jumlah keterangan (contoh: 75000 pulsa).',\n    'Input transaksi: jumlah keterangan. Contoh: 150000 bayar listrik.'\n  ],\n  formal: [\n    'Mohon kirim data transaksi dengan format: jumlah keterangan. Contoh: 200000 biaya transport.',\n    'Silakan laporkan transaksi: jumlah keterangan (misal: 50000 pembelian alat tulis).'\n  ],\n  gaul: [\n    'Cus catat pengeluaran hari ini, tulis: jumlah keterangan. Misal: 20k kopi.',\n    'Yuk drop catatanmu: jumlah keterangan. Contoh: 35k jajan.'\n  ],\n};\n\nconst pick = (arr) => arr[Math.floor(Math.random() * arr.length)];\nconst base = pick(templates[style] || templates.santai);\nconst fallbackSantai = pick(templates.santai);\n\nreturn [{ json: { ...$json, response_style: style, base_message: base, fallback_santai: fallbackSantai } }];"
+      },
+      "id": "build-template",
+      "name": "Build Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-gaul",
+              "leftValue": "={{ $json.response_style }}",
+              "rightValue": "gaul",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-gaul",
+      "name": "If Style = Gaul",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AI_API_URL }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{ `Tulis ulang dengan bahasa gaul, tetap faktual, jangan ubah angka, 1 kalimat: ${$json.base_message}` }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10,
+          "allowUnauthorizedCerts": true,
+          "redirect": {
+            "followRedirects": true
+          },
+          "response": "json",
+          "sendBody": "json",
+          "retry": {
+            "maxRetries": 2,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "llm-rewrite",
+      "name": "LLM Rewrite (Gaul)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide final message\nconst style = $json.response_style;\nconst base = $json.base_message;\nconst fallback = $json.fallback_santai;\nlet finalMessage = base;\n\nif (style === 'gaul') {\n  const llm = $json.body?.data || $json.body?.message || $json.body || null;\n  if (typeof llm === 'string' && llm.trim().length > 0) {\n    finalMessage = llm.trim();\n  } else {\n    finalMessage = fallback; // fallback ke santai jika gagal\n  }\n}\n\nconst delay = Math.floor(Math.random() * 2000) + 1000; // 1-3s\n\nreturn [{ json: { ...$json, final_message: finalMessage, delay } }];"
+      },
+      "id": "compose-final",
+      "name": "Compose Final Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-random",
+      "name": "Wait (Random)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOWA_URL }}/api/send",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.final_message }}"
+            },
+            {
+              "name": "delay",
+              "value": "={{ $json.delay }}"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxRetries": 3,
+            "retryOnFail": true,
+            "delayBetweenAttempts": 2000
+          }
+        }
+      },
+      "id": "send-gowa",
+      "name": "Send via GoWA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 300]
+    }
+  ],
+  "connections": {
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Check/Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (Hybrid)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check/Create User": {
+      "main": [
+        [
+          {
+            "node": "Build Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Template": {
+      "main": [
+        [
+          {
+            "node": "If Style = Gaul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Style = Gaul": {
+      "main": [
+        [
+          {
+            "node": "Compose Final Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LLM Rewrite (Gaul)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Rewrite (Gaul)": {
+      "main": [
+        [
+          {
+            "node": "Compose Final Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Final Message": {
+      "main": [
+        [
+          {
+            "node": "Wait (Random)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Random)": {
+      "main": [
+        [
+          {
+            "node": "Send via GoWA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send via GoWA": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+
