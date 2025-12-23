@@ -79,7 +79,7 @@ services:
       # Environment variables untuk workflows
       - BACKEND_URL=${BACKEND_URL:-http://backend}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-change-this-secret-key}
-      - GOWA_URL=${GOWA_URL:-http://gowa:3000}
+      - GOWA_URL=${GOWA_URL:-http://gowa:6001}
       # Timezone
       - GENERIC_TIMEZONE=${TZ:-Asia/Makassar}
     volumes:
@@ -178,10 +178,10 @@ services:
     #   dockerfile: Dockerfile
     command: sh -c "echo 'GoWA service - replace with actual GoWA setup' && tail -f /dev/null"
     ports:
-      - "${GOWA_PORT:-3000}:3000"
+      - "${GOWA_PORT:-6001}:6001"
     environment:
       - NODE_ENV=${APP_ENV:-production}
-      - PORT=3000
+      - PORT=6001
       # GoWA specific env vars (sesuaikan dengan GoWA docs)
       - GOWA_WEBHOOK_URL=${GOWA_WEBHOOK_URL:-http://n8n:5678/webhook/wa-in}
     volumes:
