@@ -44,7 +44,7 @@ services:
     networks:
       - wa-finance-network
     ports:
-      - "${DB_PORT:-3307}:3307"
+      - "${DB_PORT:-3307}:3306"
 
   # n8n Workflow Automation
   n8n:
@@ -177,8 +177,9 @@ services:
     #   context: ./gowa
     #   dockerfile: Dockerfile
     command: sh -c "echo 'GoWA service - replace with actual GoWA setup' && tail -f /dev/null"
-    ports:
-      - "${GOWA_PORT:-6001}:6001"
+    # Hapus mapping port host jika tidak perlu expose langsung
+    # ports:
+    #   - "${GOWA_PORT:-6001}:6001"
     environment:
       - NODE_ENV=${APP_ENV:-production}
       - PORT=6001
@@ -197,8 +198,8 @@ services:
     container_name: wa-finance-nginx
     restart: unless-stopped
     ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
+      - "${NGINX_HTTP_PORT:-8880}:80"
+      - "${NGINX_HTTPS_PORT:-8843}:443"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
