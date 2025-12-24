@@ -23,7 +23,21 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<'EOF'
             echo "Nyambung ke server... lanjut git pull ya!"
-            cd /opt/catatuang || exit 1
+            cd /var/www/catatuang || exit 1
             git pull
-            echo "Selesai! Kode di server sudah paling anyar."
+            echo "Kode terbaru udah ditarik!"
+            
+            echo "Build Svelte dulu nih..."
+            npm run build
+            echo "Svelte build selesai!"
+            
+            echo "Sekarang Laravel-nya..."
+            cd backend || exit 1
+            php artisan migrate
+            php artisan cache:clear
+            php artisan config:clear
+            php artisan optimize:clear
+            echo "Laravel commands selesai semua!"
+            
+            echo "Done! Semua udah up-to-date dan siap dipake."
           EOF
