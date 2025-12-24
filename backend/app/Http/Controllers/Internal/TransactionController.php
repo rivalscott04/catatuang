@@ -51,9 +51,63 @@ class TransactionController extends Controller
 
         $payload = $request->input('transactions');
 
+        // Count how many struk (receipt) transactions
+        $strukCount = 0;
+        foreach ($payload as $item) {
+            if (($item['source'] ?? 'text') === 'receipt') {
+                $strukCount++;
+            }
+        }
+
+        // Check struk limit if there are receipt transactions
+        if ($strukCount > 0) {
+            $canUseStruk = $user->canUseStruk();
+            
+            if (!$canUseStruk['allowed']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Struk limit exceeded',
+                    'errors' => [
+                        'struk_limit' => [
+                            'Limit struk bulanan sudah tercapai. Limit: ' . $canUseStruk['limit'] . ', Terpakai: ' . $canUseStruk['used'],
+                        ],
+                    ],
+                    'data' => [
+                        'phone_number' => $user->phone_number,
+                        'plan' => $user->plan,
+                        'limit_exceeded' => true,
+                        'limits' => [
+                            'struk' => $canUseStruk,
+                        ],
+                    ],
+                ], 429);
+            }
+
+            // Check if adding these struk would exceed limit
+            if ($canUseStruk['remaining'] !== null && $strukCount > $canUseStruk['remaining']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Struk limit akan terlampaui',
+                    'errors' => [
+                        'struk_limit' => [
+                            'Mencoba menambah ' . $strukCount . ' struk, tapi sisa limit hanya ' . $canUseStruk['remaining'] . '. Limit: ' . $canUseStruk['limit'] . ', Terpakai: ' . $canUseStruk['used'],
+                        ],
+                    ],
+                    'data' => [
+                        'phone_number' => $user->phone_number,
+                        'plan' => $user->plan,
+                        'limit_exceeded' => true,
+                        'limits' => [
+                            'struk' => $canUseStruk,
+                        ],
+                    ],
+                ], 429);
+            }
+        }
+
         $created = [];
 
-        DB::transaction(function () use ($user, $payload, &$created) {
+        DB::transaction(function () use ($user, $payload, &$created, $strukCount) {
             foreach ($payload as $item) {
                 $tx = Transaction::create([
                     'user_id' => $user->id,
@@ -64,6 +118,13 @@ class TransactionController extends Controller
                     'source' => $item['source'] ?? 'text',
                 ]);
                 $created[] = $tx->id;
+            }
+
+            // Increment struk count if there are receipt transactions
+            if ($strukCount > 0) {
+                for ($i = 0; $i < $strukCount; $i++) {
+                    $user->incrementStruk();
+                }
             }
         });
 

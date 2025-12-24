@@ -1,5 +1,7 @@
 <script>
   import Hero from "./lib/Hero.svelte";
+  import Terms from "./lib/Terms.svelte";
+  import Privacy from "./lib/Privacy.svelte";
   import { onMount } from "svelte";
 
   let showRegisterModal = false;
@@ -9,6 +11,27 @@
   let loading = false;
   let selectedPlan = "free"; // free, pro, vip
   let isPlanLocked = false; // true jika plan sudah ditentukan dari tombol
+  let currentPage = "home"; // home, syarat, privasi
+
+  // Handle hash routing
+  function handleHashChange() {
+    const hash = window.location.hash;
+    if (hash === "#syarat" || hash === "#syarat-ketentuan") {
+      currentPage = "syarat";
+    } else if (hash === "#privasi" || hash === "#kebijakan-privasi") {
+      currentPage = "privasi";
+    } else {
+      currentPage = "home";
+    }
+  }
+
+  onMount(() => {
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  });
 
   function openRegisterModal(plan = null) {
     // Jika plan tidak ditentukan (null), user bisa pilih sendiri
@@ -135,14 +158,8 @@
     <div class="container nav-content">
       <a href="#hero" class="logo">
         <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6"
-            ><path
-              d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"
-              fill="currentColor"
-            /></svg
-          >
+          <img src="/catatuang_logo.svg" alt="CatatUang Logo" />
         </div>
-        <span class="logo-text">CatatBot</span>
       </a>
 
       <div class="nav-links">
@@ -174,9 +191,14 @@
   </nav>
 
   <main>
-    <Hero {openRegisterModal} />
+    {#if currentPage === "syarat"}
+      <Terms />
+    {:else if currentPage === "privasi"}
+      <Privacy />
+    {:else}
+      <Hero {openRegisterModal} />
 
-    <section id="features" class="section">
+      <section id="features" class="section">
       <div class="container">
         <h2>
           Pintar Atur Uang.<br /><span class="highlight">Tanpa Ribet.</span>
@@ -354,7 +376,18 @@
                     stroke-width="3"
                     ><polyline points="20 6 9 17 4 12"></polyline></svg
                   ></span
-                > <strong>10</strong> chat transaksi
+                > <strong>10 chat text</strong> /bulan
+              </li>
+              <li>
+                <span class="check-icon basic"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    ><polyline points="20 6 9 17 4 12"></polyline></svg
+                  ></span
+                > Upload struk <strong>(1/bulan)</strong>
               </li>
               <li>
                 <span class="check-icon basic"
@@ -396,7 +429,7 @@
                     stroke-width="3"
                     ><polyline points="20 6 9 17 4 12"></polyline></svg
                   ></span
-                > <strong>Unlimited</strong> transaksi chat
+                > <strong>200 chat text</strong> /bulan
               </li>
               <li>
                 <span class="check-icon pro"
@@ -407,7 +440,7 @@
                     stroke-width="3"
                     ><polyline points="20 6 9 17 4 12"></polyline></svg
                   ></span
-                > Upload struk otomatis (50/bln)
+                > Upload struk otomatis <strong>(50/bulan)</strong>
               </li>
               <li>
                 <span class="check-icon pro"
@@ -480,7 +513,19 @@
                     ><polyline points="20 6 9 17 4 12"></polyline></svg
                   ></span
                 >
-                Upload struk <strong>300+ / bln</strong>
+                <strong>Unlimited</strong> chat text
+              </li>
+              <li>
+                <span class="check-icon"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    ><polyline points="20 6 9 17 4 12"></polyline></svg
+                  ></span
+                >
+                Upload struk <strong>200/bulan</strong>
               </li>
               <li>
                 <span class="check-icon"
@@ -548,14 +593,8 @@
           <div class="footer-brand">
             <div class="footer-logo">
               <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6">
-                  <path
-                    d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"
-                    fill="currentColor"
-                  />
-                </svg>
+                <img src="/catatuang_logo.svg" alt="CatatUang Logo" />
               </div>
-              <span class="footer-logo-text">CatatBot</span>
             </div>
             <p class="footer-tagline">
               Asisten keuangan pribadi di dalam WhatsApp kamu. Catat, pantau,
@@ -628,10 +667,8 @@
           <div class="footer-column">
             <h4>Perusahaan</h4>
             <ul>
-              <li><a href="/tentang">Tentang Kami</a></li>
-              <li><a href="/karir">Karir</a></li>
-              <li><a href="/privasi">Privasi</a></li>
-              <li><a href="/syarat">Syarat & Ketentuan</a></li>
+              <li><a href="#privasi">Kebijakan Privasi</a></li>
+              <li><a href="#syarat">Syarat & Ketentuan</a></li>
             </ul>
           </div>
         </div>
@@ -644,6 +681,7 @@
         </div>
       </div>
     </footer>
+    {/if}
   </main>
 
   <!-- Register Modal -->
@@ -658,9 +696,7 @@
       tabindex="-1"
     >
       <div 
-        class="modal-content" 
-        on:click|stopPropagation 
-        on:keydown|stopPropagation
+        class="modal-content"
         role="document"
       >
         <button class="modal-close" on:click={closeRegisterModal} aria-label="Tutup">
@@ -672,13 +708,7 @@
 
         <div class="modal-header">
           <div class="modal-logo">
-            <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8">
-              <path
-                d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"
-                fill="currentColor"
-              />
-            </svg>
-            <span class="modal-logo-text">CatatBot</span>
+            <img src="/catatuang_logo.svg" alt="CatatUang Logo" />
           </div>
           <h2 id="modal-title" class="modal-title">Daftar Sekarang</h2>
           <p class="modal-subtitle">Mulai atur keuanganmu dengan mudah via WhatsApp</p>
@@ -747,7 +777,6 @@
                 placeholder="81234567890"
                 class="form-input"
                 required
-                autofocus
                 disabled={loading}
                 aria-required="true"
               />
@@ -817,13 +846,17 @@
 
   .logo-icon {
     color: var(--color-primary);
-    width: 28px;
-    height: 28px;
+    width: 225px;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .logo-icon svg {
+  .logo-icon img {
     width: 100%;
-    height: 100%;
+    height: auto;
+    object-fit: contain;
   }
 
   .nav-links {
@@ -1188,6 +1221,11 @@
     margin-bottom: 1rem;
   }
 
+  .footer-logo .logo-icon {
+    width: 140px;
+    height: auto;
+  }
+
   .footer-logo-text {
     font-weight: 700;
     font-size: 1.25rem;
@@ -1501,9 +1539,10 @@
     color: var(--color-primary);
   }
 
-  .modal-logo svg {
-    width: 32px;
-    height: 32px;
+  .modal-logo img {
+    width: 150px;
+    height: auto;
+    object-fit: contain;
   }
 
   .modal-logo-text {

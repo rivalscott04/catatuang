@@ -111,26 +111,33 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ `Bearer ${$env.OPENROUTER_API_KEY}` }}"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "={{ $env.N8N_WEBHOOK_URL || 'https://n8n.yourdomain.com' }}"
+            },
+            {
+              "name": "X-Title",
+              "value": "WA Finance Bot"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "prompt",
-              "value": "={{ `Tulis ulang dengan bahasa gaul, tetap faktual, jangan ubah angka, 1 kalimat: ${$json.base_message}` }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-3.5-turbo',\n  messages: [\n    {\n      role: 'user',\n      content: `Tulis ulang dengan bahasa gaul, tetap faktual, jangan ubah angka, 1 kalimat: ${$json.base_message}`\n    }\n  ],\n  max_tokens: 100,\n  temperature: 0.7\n}) }}",
         "options": {
           "timeout": 10,
           "allowUnauthorizedCerts": true,
           "redirect": {
             "followRedirects": true
           },
-          "response": "json",
-          "sendBody": "json",
+          "response": {
+            "responseFormat": "json"
+          },
           "retry": {
             "maxRetries": 2,
             "retryOnFail": true
@@ -146,7 +153,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Decide final message\nconst style = $json.response_style;\nconst base = $json.base_message;\nconst fallback = $json.fallback_santai;\nlet finalMessage = base;\n\nif (style === 'gaul') {\n  const llm = $json.body?.data || $json.body?.message || $json.body || null;\n  if (typeof llm === 'string' && llm.trim().length > 0) {\n    finalMessage = llm.trim();\n  } else {\n    finalMessage = fallback; // fallback ke santai jika gagal\n  }\n}\n\nconst delay = Math.floor(Math.random() * 2000) + 1000; // 1-3s\n\nreturn [{ json: { ...$json, final_message: finalMessage, delay } }];"
+        "jsCode": "// Decide final message\nconst style = $json.response_style;\nconst base = $json.base_message;\nconst fallback = $json.fallback_santai;\nlet finalMessage = base;\n\nif (style === 'gaul') {\n  // Parse OpenRouter response format\n  const llmResponse = $json.body || {};\n  const content = llmResponse.choices?.[0]?.message?.content || \n                   llmResponse.data?.choices?.[0]?.message?.content ||\n                   llmResponse.message ||\n                   llmResponse.data ||\n                   null;\n  \n  if (typeof content === 'string' && content.trim().length > 0) {\n    finalMessage = content.trim();\n  } else {\n    finalMessage = fallback; // fallback ke santai jika gagal\n  }\n}\n\nconst delay = Math.floor(Math.random() * 2000) + 1000; // 1-3s\n\nreturn [{ json: { ...$json, final_message: finalMessage, delay } }];"
       },
       "id": "compose-final",
       "name": "Compose Final Message",

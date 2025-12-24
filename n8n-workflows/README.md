@@ -13,6 +13,8 @@ Workflow n8n untuk menangani chat WhatsApp dan reminder harian.
    - `BACKEND_URL`: URL backend API (contoh: `http://localhost:8000`)
    - `INTERNAL_API_KEY`: API key untuk autentikasi ke backend
    - `GOWA_URL`: URL GoWA API (contoh: `http://localhost:3000`)
+   - `AI_API_URL`: URL OpenRouter API (contoh: `https://openrouter.ai/api/v1/chat/completions`)
+   - `OPENROUTER_API_KEY`: API key dari OpenRouter (format: `sk-or-v1-...`)
 
 3. Setup Webhook URL:
    - Setelah import workflow "Chat & Reminder Control", copy webhook URL

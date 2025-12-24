@@ -85,6 +85,9 @@ class AuthController extends Controller
             'is_unlimited' => false,
         ]);
 
+        // Initialize subscription for new user
+        $user->initializeSubscription($plan);
+
         // Handle JSON requests
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([

@@ -164,6 +164,8 @@ Di n8n, setup environment variables:
    BACKEND_URL=http://localhost:8000
    INTERNAL_API_KEY=your-secret-api-key-here (sama dengan di backend .env)
    GOWA_URL=http://localhost:3000 (atau URL GoWA kamu)
+   AI_API_URL=https://openrouter.ai/api/v1/chat/completions
+   OPENROUTER_API_KEY=sk-or-v1-... (API key dari OpenRouter)
    ```
 
 Atau jika pakai Docker, tambahkan di docker-compose:

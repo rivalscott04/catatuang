@@ -85,6 +85,8 @@ Backend akan berjalan di `http://localhost:8000`
    - `BACKEND_URL`: `http://localhost:8000` (atau URL backend kamu)
    - `INTERNAL_API_KEY`: sama dengan yang di `.env` backend
    - `GOWA_URL`: URL GoWA API kamu
+   - `AI_API_URL`: `https://openrouter.ai/api/v1/chat/completions` (untuk rewrite gaya gaul)
+   - `OPENROUTER_API_KEY`: API key dari OpenRouter (dapatkan di https://openrouter.ai/keys)
 4. Copy webhook URL dari workflow "Chat & Reminder Control"
 5. Konfigurasi GoWA untuk mengirim webhook ke URL tersebut
 
@@ -118,14 +120,23 @@ Check atau create user berdasarkan phone_number. Mengembalikan `response_style`.
 {
   "success": true,
   "data": {
-    "id": 1,
     "phone_number": "62812xxxx",
-    "name": null,
-    "plan": "free",
-    "status": "active",
+    "response_style": "santai",
     "reminder_enabled": true,
-    "is_unlimited": false,
-    "response_style": "santai"
+    "status": "active",
+    "plan": "pro",
+    "limits": {
+      "chat": {
+        "limit": 200,
+        "used": 50,
+        "remaining": 150
+      },
+      "struk": {
+        "limit": 50,
+        "used": 10,
+        "remaining": 40
+      }
+    }
   }
 }
 ```
@@ -168,6 +179,154 @@ Get list user yang belum input transaksi hari ini dan reminder_enabled=true.
 }
 ```
 
+### POST `/api/internal/users/increment-chat`
+Increment chat count untuk user. Dipanggil oleh n8n setiap ada pesan masuk. Return 429 jika limit exceeded.
+
+**Request:**
+```json
+{
+  "phone_number": "62812xxxx"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "data": {
+    "phone_number": "62812xxxx",
+    "plan": "pro",
+    "limits": {
+      "chat": {
+        "limit": 200,
+        "used": 150,
+        "remaining": 50
+      },
+      "struk": {
+        "limit": 50,
+        "used": 10,
+        "remaining": 40
+      }
+    }
+  }
+}
+```
+
+**Response (Limit Exceeded - 429):**
+```json
+{
+  "success": false,
+  "message": "Chat limit exceeded",
+  "data": {
+    "phone_number": "62812xxxx",
+    "plan": "pro",
+    "limit_exceeded": true,
+    "limits": {
+      "chat": {
+        "allowed": false,
+        "remaining": 0,
+        "limit": 200,
+        "used": 200
+      }
+    }
+  }
+}
+```
+
+### GET `/api/internal/users/limits`
+Get current limit status untuk user.
+
+**Request Query:**
+```
+?phone_number=62812xxxx
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "phone_number": "62812xxxx",
+    "plan": "vip",
+    "limits": {
+      "chat": {
+        "limit": null,
+        "used": 500,
+        "remaining": null
+      },
+      "struk": {
+        "limit": 200,
+        "used": 50,
+        "remaining": 150
+      }
+    }
+  }
+}
+```
+
+### GET `/api/internal/subscriptions/expiring-soon`
+Get list user yang subscription-nya akan expired dalam X hari (default: 2 hari). Digunakan untuk reminder.
+
+**Request Query:**
+```
+?days=2
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "days": 2,
+    "target_date": "2024-01-18",
+    "count": 5,
+    "items": [
+      {
+        "phone_number": "62812xxxx",
+        "plan": "pro",
+        "subscription_expires_at": "2024-01-18",
+        "days_until_expiry": 2,
+        "response_style": "santai"
+      }
+    ]
+  }
+}
+```
+
+### GET `/api/internal/subscriptions/expired`
+Get list user yang subscription-nya sudah expired.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 3,
+    "items": [
+      {
+        "phone_number": "62812xxxx",
+        "plan": "pro",
+        "subscription_expires_at": "2024-01-15"
+      }
+    ]
+  }
+}
+```
+
+### POST `/api/internal/subscriptions/mark-expired`
+Mark subscriptions sebagai expired (dipanggil oleh cron atau manual).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "updated_count": 3,
+    "message": "Marked 3 subscriptions as expired"
+  }
+}
+```
+
 ## 💬 Chat Commands
 
 User bisa mengontrol reminder via chat:
@@ -177,12 +336,43 @@ User bisa mengontrol reminder via chat:
 - **Info reminder**: "reminder apa", "kenapa diingatkan", "cara matiin reminder"
 - **Ganti gaya balas**: "gaya santai", "gaya biasa", "gaya netral", "gaya formal", "gaya gaul"
 
+## 📊 Limit System
+
+Sistem limit bulanan untuk chat text dan struk berdasarkan plan:
+
+- **Free**: 
+  - Chat text: 10/bulan
+  - Struk: 1/bulan
+- **Pro**: 
+  - Chat text: 200/bulan
+  - Struk: 50/bulan
+- **VIP**: 
+  - Chat text: Unlimited
+  - Struk: 200/bulan
+
+Limit di-reset otomatis setiap bulan. Counter di-increment otomatis:
+- Chat: setiap pesan masuk (via `POST /api/internal/users/increment-chat`)
+- Struk: setiap transaksi dengan `source='receipt'` (via `POST /api/internal/transactions/batch`)
+
+Jika limit exceeded, API akan return HTTP 429 dengan detail limit.
+
 ## 🔒 Security
 
 - API Key authentication untuk semua internal endpoints
 - Rate limiting per phone_number (opsional, bisa ditambahkan)
 - Input validation dan sanitization
 - Multi-user isolation: backend resolve user by phone_number, tidak menerima user_id dari client
+
+## 📅 Subscription Management
+
+Sistem subscription dengan reminder otomatis:
+
+- **Free Plan**: Trial 3 hari, auto-expired setelah itu
+- **Pro/VIP Plan**: Subscription 30 hari
+- **Auto Reminder**: n8n mengirim reminder 2 hari sebelum expired
+- **Status Tracking**: `active`, `expired`, `cancelled`
+
+Workflow n8n `04-subscription-expiry-reminder.json` berjalan setiap hari jam 08:00 untuk mengirim reminder.
 
 ## 📚 Dokumentasi
 

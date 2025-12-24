@@ -29,6 +29,7 @@ class UserController extends Controller
         $phone = $this->normalizePhoneNumber($request->input('phone_number'));
         $name = $request->input('name');
 
+        $wasRecentlyCreated = false;
         $user = User::firstOrCreate(
             ['phone_number' => $phone],
             [
@@ -41,10 +42,23 @@ class UserController extends Controller
             ]
         );
 
+        // Check if user was just created
+        if ($user->wasRecentlyCreated) {
+            $wasRecentlyCreated = true;
+            // Initialize subscription for new user
+            $user->initializeSubscription('free');
+            $user->refresh();
+        }
+
         // If user exists and name provided, update nullable name
         if ($name && !$user->name) {
             $user->update(['name' => $name]);
         }
+
+        // Get limit info
+        $chatLimit = $user->getChatLimit();
+        $strukLimit = $user->getStrukLimit();
+        $user->resetMonthlyCountersIfNeeded();
 
         return response()->json([
             'success' => true,
@@ -54,6 +68,18 @@ class UserController extends Controller
                 'reminder_enabled' => $user->reminder_enabled,
                 'status' => $user->status,
                 'plan' => $user->plan,
+                'limits' => [
+                    'chat' => [
+                        'limit' => $chatLimit,
+                        'used' => $user->chat_count_month,
+                        'remaining' => $chatLimit === null ? null : max(0, $chatLimit - $user->chat_count_month),
+                    ],
+                    'struk' => [
+                        'limit' => $strukLimit,
+                        'used' => $user->struk_count_month,
+                        'remaining' => $strukLimit === null ? null : max(0, $strukLimit - $user->struk_count_month),
+                    ],
+                ],
             ],
         ]);
     }
@@ -167,6 +193,120 @@ class UserController extends Controller
         }
 
         return $phone;
+    }
+
+    /**
+     * POST /internal/users/increment-chat
+     * Increment chat count for a user (called by n8n on each incoming message).
+     */
+    public function incrementChat(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check limit before incrementing
+        $canUse = $user->canUseChat();
+        
+        if (!$canUse['allowed']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chat limit exceeded',
+                'data' => [
+                    'phone_number' => $user->phone_number,
+                    'plan' => $user->plan,
+                    'limit_exceeded' => true,
+                    'limits' => [
+                        'chat' => $canUse,
+                    ],
+                ],
+            ], 429);
+        }
+
+        // Increment chat count
+        $user->incrementChat();
+        $user->refresh();
+
+        // Get updated limit info
+        $chatLimit = $user->getChatLimit();
+        $strukLimit = $user->getStrukLimit();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'phone_number' => $user->phone_number,
+                'plan' => $user->plan,
+                'limits' => [
+                    'chat' => [
+                        'limit' => $chatLimit,
+                        'used' => $user->chat_count_month,
+                        'remaining' => $chatLimit === null ? null : max(0, $chatLimit - $user->chat_count_month),
+                    ],
+                    'struk' => [
+                        'limit' => $strukLimit,
+                        'used' => $user->struk_count_month,
+                        'remaining' => $strukLimit === null ? null : max(0, $strukLimit - $user->struk_count_month),
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * GET /internal/users/limits
+     * Get current limit status for a user.
+     */
+    public function getLimits(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        $user->resetMonthlyCountersIfNeeded();
+        $chatLimit = $user->getChatLimit();
+        $strukLimit = $user->getStrukLimit();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'phone_number' => $user->phone_number,
+                'plan' => $user->plan,
+                'limits' => [
+                    'chat' => [
+                        'limit' => $chatLimit,
+                        'used' => $user->chat_count_month,
+                        'remaining' => $chatLimit === null ? null : max(0, $chatLimit - $user->chat_count_month),
+                    ],
+                    'struk' => [
+                        'limit' => $strukLimit,
+                        'used' => $user->struk_count_month,
+                        'remaining' => $strukLimit === null ? null : max(0, $strukLimit - $user->struk_count_month),
+                    ],
+                ],
+            ],
+        ]);
     }
 
     private function errorResponse(string $message, $errors, int $code): JsonResponse
