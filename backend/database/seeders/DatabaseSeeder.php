@@ -15,11 +15,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seed pricing
+        $this->call(PricingSeeder::class);
+        
+        // Seed admin
+        $this->call(AdminSeeder::class);
+
+        // Seed unlimited users (no package needed)
+        $this->call(UnlimitedUsersSeeder::class);
+
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // User::factory()->create([
+        //     'name' => 'Test User',
+        //     'email' => 'test@example.com',
+        // ]);
     }
 }

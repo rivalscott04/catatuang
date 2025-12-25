@@ -593,6 +593,8 @@
       </div>
     </section>
 
+    {/if}
+
     <footer class="footer">
       <div class="container">
         <div class="footer-grid">
@@ -688,7 +690,6 @@
         </div>
       </div>
     </footer>
-    {/if}
   </main>
 
   <!-- Register Modal -->
