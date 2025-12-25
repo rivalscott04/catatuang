@@ -3,21 +3,23 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
+        "triggerTimes": {
+          "item": [
             {
-              "field": "cronExpression",
-              "expression": "0 20 * * *"
+              "mode": "everyDay",
+              "hour": 20,
+              "minute": 0
             }
           ]
         },
         "timezone": "Asia/Makassar"
       },
-      "id": "cron-trigger",
-      "name": "Cron (Daily 20:00)",
-      "type": "n8n-nodes-base.cron",
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [250, 300]
+      "position": [250, 300],
+      "disabled": false
     },
     {
       "parameters": {
@@ -125,7 +127,7 @@
     }
   ],
   "connections": {
-    "Cron (Daily 20:00)": {
+    "Schedule Trigger": {
       "main": [[{ "node": "Fetch Reminder Candidates", "type": "main", "index": 0 }]]
     },
     "Fetch Reminder Candidates": {
