@@ -11,18 +11,25 @@ export default defineConfig(({ mode }) => {
     try {
       const envProdPath = resolve(process.cwd(), '.env.prod')
       const envProdContent = readFileSync(envProdPath, 'utf-8')
+      console.log('Loading .env.prod for production build...')
       envProdContent.split('\n').forEach(line => {
         const trimmedLine = line.trim()
         if (trimmedLine && !trimmedLine.startsWith('#')) {
           const [key, ...valueParts] = trimmedLine.split('=')
           if (key && valueParts.length > 0) {
-            env[key.trim()] = valueParts.join('=').trim()
+            const keyTrimmed = key.trim()
+            const valueTrimmed = valueParts.join('=').trim()
+            env[keyTrimmed] = valueTrimmed
+            if (keyTrimmed.startsWith('VITE_')) {
+              console.log(`  Found ${keyTrimmed} = ${valueTrimmed}`)
+            }
           }
         }
       })
+      console.log('Successfully loaded .env.prod')
     } catch (err) {
       // .env.prod tidak ada, gunakan default
-      console.warn('Warning: .env.prod not found, using defaults')
+      console.warn('Warning: .env.prod not found, using defaults', err.message)
     }
   }
   
