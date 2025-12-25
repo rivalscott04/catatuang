@@ -83,6 +83,9 @@
         }
         dispatch('updated');
         showToastMessage('Perubahan berhasil disimpan!', 'success');
+        
+        // Trigger refresh di halaman utama dengan custom event
+        window.dispatchEvent(new CustomEvent('pricing-updated'));
       } else {
         showToastMessage(data.message || 'Gagal mengupdate harga', 'error');
       }

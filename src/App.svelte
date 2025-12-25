@@ -49,6 +49,54 @@
   let pricings = [];
   let pricingLoading = true;
 
+  // Function to fetch pricing data
+  async function fetchPricing() {
+    pricingLoading = true;
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/pricing`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Pricing API response:", data);
+        console.log("Response data type:", typeof data.data, "Is array:", Array.isArray(data.data));
+        
+        if (data.success) {
+          if (data.data && Array.isArray(data.data)) {
+            // Ensure features is always an array
+            pricings = data.data.map(p => ({
+              ...p,
+              features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
+            }));
+            console.log("Pricing data loaded:", pricings);
+            console.log("Number of pricings:", pricings.length);
+          } else {
+            console.warn("Pricing data is not an array:", data.data);
+            pricings = [];
+          }
+        } else {
+          console.error("API returned success=false:", data);
+          pricings = [];
+        }
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to fetch pricing, status:", response.status, errorText);
+        pricings = [];
+      }
+    } catch (err) {
+      console.error("Failed to fetch pricing:", err);
+      pricings = [];
+    } finally {
+      pricingLoading = false;
+    }
+  }
+
   // Handle hash routing
   function handleHashChange() {
     const hash = window.location.hash;
@@ -83,55 +131,19 @@
     })();
 
     // Fetch pricing from backend
-    (async () => {
-      pricingLoading = true;
-      try {
-        const response = await fetch(`${apiBaseUrl}/api/pricing`, {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Pricing API response:", data);
-          console.log("Response data type:", typeof data.data, "Is array:", Array.isArray(data.data));
-          
-          if (data.success) {
-            if (data.data && Array.isArray(data.data)) {
-              // Ensure features is always an array
-              pricings = data.data.map(p => ({
-                ...p,
-                features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
-              }));
-              console.log("Pricing data loaded:", pricings);
-              console.log("Number of pricings:", pricings.length);
-            } else {
-              console.warn("Pricing data is not an array:", data.data);
-              pricings = [];
-            }
-          } else {
-            console.error("API returned success=false:", data);
-            pricings = [];
-          }
-        } else {
-          const errorText = await response.text();
-          console.error("Failed to fetch pricing, status:", response.status, errorText);
-          pricings = [];
-        }
-      } catch (err) {
-        console.error("Failed to fetch pricing:", err);
-        pricings = [];
-      } finally {
-        pricingLoading = false;
-      }
-    })();
+    fetchPricing();
+
+    // Listen for pricing updates from admin panel
+    const handlePricingUpdate = () => {
+      console.log('Pricing updated event received, refreshing data...');
+      fetchPricing();
+    };
+    
+    window.addEventListener('pricing-updated', handlePricingUpdate);
     
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener('pricing-updated', handlePricingUpdate);
     };
   });
 
