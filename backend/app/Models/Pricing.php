@@ -14,11 +14,13 @@ class Pricing extends Model
         'price',
         'is_active',
         'description',
+        'features',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'is_active' => 'boolean',
+        'features' => 'array',
     ];
 
     /**

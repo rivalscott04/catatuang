@@ -9,6 +9,7 @@
   let loading = true;
   let currentPage = 1;
   let totalPages = 1;
+  let perPage = 15;
   let search = '';
   let planFilter = '';
   let statusFilter = '';
@@ -33,7 +34,7 @@
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        per_page: '15',
+        per_page: perPage.toString(),
       });
 
       if (search) params.append('search', search);
@@ -470,7 +471,7 @@
             {@const expiryInfo = formatExpiryDate(user.subscription_expires_at)}
             {@const statusInfo = getCombinedStatus(user)}
             {@const isNew = isNewUser(user.created_at)}
-            {@const rowNumber = (currentPage - 1) * 15 + index + 1}
+            {@const rowNumber = (currentPage - 1) * perPage + index + 1}
             <tr class:editing={editingUser === user.id}>
               <td>{rowNumber}</td>
               <td>
@@ -1321,19 +1322,13 @@
   }
 
   .card-name {
-    margin: 0 0 0.25rem 0;
+    margin: 0;
     font-size: 1rem;
     font-weight: 600;
     color: #1e293b;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-  }
-
-  .card-id {
-    margin: 0;
-    font-size: 0.75rem;
-    color: #64748b;
   }
 
   .btn-action-menu-mobile {

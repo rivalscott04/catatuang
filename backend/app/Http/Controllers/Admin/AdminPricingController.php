@@ -31,6 +31,7 @@ class AdminPricingController extends Controller
             'price' => 'required|integer|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string|max:255',
+            'features' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -50,11 +51,17 @@ class AdminPricingController extends Controller
             ], 404);
         }
 
-        $pricing->update([
+        $updateData = [
             'price' => $request->input('price'),
             'is_active' => $request->input('is_active', $pricing->is_active),
             'description' => $request->input('description', $pricing->description),
-        ]);
+        ];
+
+        if ($request->has('features')) {
+            $updateData['features'] = $request->input('features');
+        }
+
+        $pricing->update($updateData);
 
         return response()->json([
             'success' => true,

@@ -1,12 +1,16 @@
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
   import { apiFetch } from '../lib/api.js';
+  import Toast from './Toast.svelte';
 
   const dispatch = createEventDispatcher();
 
   let pricings = [];
   let loading = true;
   let saving = {};
+  let showToast = false;
+  let toastMessage = '';
+  let toastType = 'success';
 
   async function getCsrfToken() {
     try {
@@ -61,6 +65,7 @@
           price: parseInt(pricing.price),
           is_active: pricing.is_active,
           description: pricing.description,
+          features: pricing.features || [],
         }),
       });
 
@@ -73,12 +78,13 @@
           pricings[index] = { ...pricings[index], ...data.data };
         }
         dispatch('updated');
+        showToastMessage('Perubahan berhasil disimpan!', 'success');
       } else {
-        alert(data.message || 'Gagal mengupdate harga');
+        showToastMessage(data.message || 'Gagal mengupdate harga', 'error');
       }
     } catch (error) {
       console.error('Failed to update pricing:', error);
-      alert('Terjadi kesalahan saat mengupdate harga');
+      showToastMessage('Terjadi kesalahan saat mengupdate harga', 'error');
     } finally {
       saving[pricing.id] = false;
     }
@@ -90,6 +96,12 @@
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(price);
+  }
+
+  function showToastMessage(message, type = 'success') {
+    toastMessage = message;
+    toastType = type;
+    showToast = true;
   }
 
   onMount(() => {
@@ -150,6 +162,22 @@
               />
             </div>
 
+            <div class="form-group">
+              <label for="features-{pricing.id}">Fitur (satu per baris)</label>
+              <textarea
+                id="features-{pricing.id}"
+                class="features-textarea"
+                placeholder="Masukkan fitur, satu per baris&#10;Contoh:&#10;200 chat text /bulan&#10;Upload struk otomatis (50/bulan)"
+                value={pricing.features ? pricing.features.join('\n') : ''}
+                on:input={(e) => {
+                  const target = e.currentTarget;
+                  const text = target.value;
+                  pricing.features = text ? text.split('\n').filter(f => f.trim()) : [];
+                }}
+              ></textarea>
+              <small class="form-hint">Setiap baris akan menjadi satu fitur</small>
+            </div>
+
             <div class="pricing-actions">
               <div class="current-price">
                 Harga saat ini: <strong>{formatPrice(pricing.price)}</strong>
@@ -168,6 +196,8 @@
     </div>
   {/if}
 </div>
+
+<Toast message={toastMessage} type={toastType} visible={showToast} on:close={() => showToast = false} />
 
 <style>
   .pricing-settings {
@@ -347,6 +377,30 @@
     outline: none;
     border-color: var(--color-primary, #10b981);
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .features-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+    transition: all 0.2s;
+  }
+
+  .features-textarea:focus {
+    outline: none;
+    border-color: var(--color-primary, #10b981);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .form-hint {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-body, #475569);
   }
 
   .pricing-actions {

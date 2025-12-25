@@ -17,8 +17,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public registration endpoint (no authentication required)
+// Allow OPTIONS for CORS preflight
+Route::options('/register', function () {
+    return response('', 200);
+});
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/bot-number', [AuthController::class, 'getBotNumber']);
+
+// Public pricing endpoint
+Route::get('/pricing', [\App\Http\Controllers\PricingController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------

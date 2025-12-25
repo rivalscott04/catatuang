@@ -16,6 +16,8 @@
   let currentPage = "home"; // home, syarat, privasi
   let registeredPhone = "";
   let botNumber = "6281234567890"; // Default, akan diambil dari API saat mount
+  let pricings = [];
+  let pricingLoading = true;
 
   // Handle hash routing
   function handleHashChange() {
@@ -47,6 +49,27 @@
       } catch (err) {
         console.error("Failed to fetch bot number:", err);
         // Keep default value
+      }
+    })();
+
+    // Fetch pricing from backend
+    (async () => {
+      pricingLoading = true;
+      try {
+        const response = await fetch("/api/pricing", {
+          method: "GET",
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            pricings = data.data;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch pricing:", err);
+      } finally {
+        pricingLoading = false;
       }
     })();
     
@@ -92,6 +115,18 @@
       vip: "VIP (Rp 79rb/bulan)",
     };
     return plans[plan] || plans.free;
+  }
+
+  function formatPrice(price) {
+    if (price === 0) return "Gratis";
+    if (price >= 1000) {
+      return `${Math.floor(price / 1000)}rb`;
+    }
+    return price.toString();
+  }
+
+  function getPricingByPlan(plan) {
+    return pricings.find(p => p.plan === plan);
   }
 
   async function getCsrfToken() {
@@ -375,218 +410,68 @@
           </p>
         </div>
 
-        <div class="pricing-wrapper three-col">
-          <!-- Card 1: Trial -->
-          <div class="pricing-card plain">
-            <div class="card-header">
-              <h3 class="plan-name">Trial 3 Hari</h3>
-              <div class="price-container">
-                <span class="currency">Gratis</span>
-              </div>
-              <p class="description">
-                Coba semua fitur utama sebelum berlangganan.
-              </p>
-            </div>
-            <div class="divider"></div>
-            <ul class="features-list">
-              <li>
-                <span class="check-icon basic"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                >
-                Aktif <strong>3 hari</strong>
-              </li>
-              <li>
-                <span class="check-icon basic"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > <strong>10 chat text</strong> /bulan
-              </li>
-              <li>
-                <span class="check-icon basic"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Upload struk <strong>(1/bulan)</strong>
-              </li>
-              <li>
-                <span class="check-icon basic"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Semua fitur Pro aktif
-              </li>
-            </ul>
-            <button class="btn-block btn-outline" on:click={() => openRegisterModal("free")}>Mulai Trial</button>
+        {#if pricingLoading}
+          <div class="pricing-loading">
+            <p>Memuat data pricing...</p>
           </div>
-
-          <!-- Card 2: Pro (Dark Green) -->
-          <div class="pricing-card pro-card">
-            <div class="popular-tag">Populer</div>
-            <div class="card-header">
-              <h3 class="plan-name text-white">Pro</h3>
-              <div class="price-container text-white">
-                <span class="currency">Rp</span>
-                <span class="amount">29rb</span>
-                <span class="frequency text-white-opacity">/bulan</span>
-              </div>
-              <p class="description text-white-opacity">
-                Fitur lebih lengkap untuk analisis mendalam.
-              </p>
-            </div>
-            <div class="divider opacity-20"></div>
-            <ul class="features-list text-white">
-              <li>
-                <span class="check-icon pro"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > <strong>200 chat text</strong> /bulan
-              </li>
-              <li>
-                <span class="check-icon pro"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Upload struk otomatis <strong>(50/bulan)</strong>
-              </li>
-              <li>
-                <span class="check-icon pro"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > OCR struk otomatis
-              </li>
-              <li>
-                <span class="check-icon pro"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Ringkasan & laporan bulanan
-              </li>
-              <li>
-                <span class="check-icon pro"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Export PDF & Excel
-              </li>
-            </ul>
-            <button class="btn-block btn-primary-bright" on:click={() => openRegisterModal("pro")}>Upgrade ke Pro</button>
-          </div>
-
-          <!-- Card 3: VIP -->
-          <div class="pricing-card plain">
-            <div class="card-header">
-              <h3 class="plan-name">VIP</h3>
-              <div class="price-container">
-                <span class="currency">Rp</span>
-                <span class="amount">79rb</span>
-                <span class="frequency">/bulan</span>
-              </div>
-              <p class="description">Untuk power user atau bisnis.</p>
-            </div>
-            <div class="divider"></div>
-            <ul class="features-list">
-              <li>
-                <span class="check-icon"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Semua fitur Pro
-              </li>
-              <li>
-                <span class="check-icon"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
+        {:else}
+          <div class="pricing-wrapper three-col">
+            {#each pricings as pricing}
+              {@const isPro = pricing.plan === 'pro'}
+              {@const isFree = pricing.plan === 'free'}
+              {@const planName = pricing.plan === 'free' ? 'Trial 3 Hari' : pricing.plan.toUpperCase()}
+              {@const buttonText = pricing.plan === 'free' ? 'Mulai Trial' : `Upgrade ke ${planName}`}
+              
+              <div class="pricing-card {isPro ? 'pro-card' : 'plain'}">
+                {#if isPro}
+                  <div class="popular-tag">Populer</div>
+                {/if}
+                <div class="card-header">
+                  <h3 class="plan-name {isPro ? 'text-white' : ''}">{planName}</h3>
+                  <div class="price-container {isPro ? 'text-white' : ''}">
+                    {#if isFree}
+                      <span class="currency">Gratis</span>
+                    {:else}
+                      <span class="currency">Rp</span>
+                      <span class="amount">{formatPrice(pricing.price)}</span>
+                      <span class="frequency {isPro ? 'text-white-opacity' : ''}">/bulan</span>
+                    {/if}
+                  </div>
+                  <p class="description {isPro ? 'text-white-opacity' : ''}">
+                    {pricing.description || '-'}
+                  </p>
+                </div>
+                <div class="divider {isPro ? 'opacity-20' : ''}"></div>
+                <ul class="features-list {isPro ? 'text-white' : ''}">
+                  {#if pricing.features && pricing.features.length > 0}
+                    {#each pricing.features as feature}
+                      <li>
+                        <span class="check-icon {isPro ? 'pro' : isFree ? 'basic' : ''}"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            ><polyline points="20 6 9 17 4 12"></polyline></svg
+                          ></span
+                        >
+                        {feature}
+                      </li>
+                    {/each}
+                  {:else}
+                    <li>Tidak ada fitur tersedia</li>
+                  {/if}
+                </ul>
+                <button 
+                  class="btn-block {isPro ? 'btn-primary-bright' : 'btn-outline'}" 
+                  on:click={() => openRegisterModal(pricing.plan)}
                 >
-                <strong>Unlimited</strong> chat text
-              </li>
-              <li>
-                <span class="check-icon"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                >
-                Upload struk <strong>200/bulan</strong>
-              </li>
-              <li>
-                <span class="check-icon"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Priority OCR processing
-              </li>
-              <li>
-                <span class="check-icon"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    ><polyline points="20 6 9 17 4 12"></polyline></svg
-                  ></span
-                > Priority Support
-              </li>
-            </ul>
-            <button class="btn-block btn-outline" on:click={() => openRegisterModal("vip")}>Upgrade ke VIP</button>
+                  {buttonText}
+                </button>
+              </div>
+            {/each}
           </div>
-        </div>
+        {/if}
       </div>
     </section>
 
@@ -1066,6 +951,12 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+  }
+
+  .pricing-loading {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-body);
   }
 
   .pricing-header {
