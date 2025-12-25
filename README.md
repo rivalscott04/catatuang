@@ -74,10 +74,18 @@ Kirim foto struk belanja, bot akan otomatis:
 
 ## 🎯 Cara Pakai
 
-### 1. Mulai Chat
-Kirim pesan pertama ke nomor WhatsApp Catatuang. Akun kamu akan otomatis terdaftar!
+### 1. Daftar di Website
+Daftarkan akun kamu terlebih dahulu di website Catatuang dengan mengisi:
+- Nama lengkap
+- Nomor WhatsApp
+- Pilih paket (Free Trial, Pro, atau VIP)
 
-### 2. Catat Transaksi
+Setelah pendaftaran berhasil, kamu akan mendapatkan nomor WhatsApp Catatuang untuk mulai chat.
+
+### 2. Mulai Chat di WhatsApp
+Setelah pendaftaran, kirim pesan pertama ke nomor WhatsApp Catatuang yang sudah diberikan.
+
+### 3. Catat Transaksi
 Kirim pesan seperti biasa:
 ```
 Beli kopi 15rb
@@ -85,14 +93,14 @@ Bayar tagihan internet 300rb
 Gaji bulan ini 5jt
 ```
 
-### 3. Atur Reminder (Opsional)
+### 4. Atur Reminder (Opsional)
 ```
 "nyalakan reminder" - untuk aktifkan reminder harian
 "matikan reminder" - untuk nonaktifkan
 "reminder apa" - untuk info tentang reminder
 ```
 
-### 4. Ganti Gaya Balasan (Opsional)
+### 5. Ganti Gaya Balasan (Opsional)
 ```
 "gaya santai"
 "gaya formal"
@@ -100,7 +108,7 @@ Gaji bulan ini 5jt
 "gaya netral"
 ```
 
-### 5. Lihat Ringkasan
+### 6. Lihat Ringkasan
 Minta ringkasan keuangan hari ini kapan saja via chat.
 
 ## 💡 Contoh Penggunaan
