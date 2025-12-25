@@ -64,7 +64,12 @@
           const data = await response.json();
           if (data.success && data.data) {
             pricings = data.data;
+            console.log("Pricing data loaded:", pricings);
+          } else {
+            console.error("Failed to load pricing:", data);
           }
+        } else {
+          console.error("Failed to fetch pricing, status:", response.status);
         }
       } catch (err) {
         console.error("Failed to fetch pricing:", err);
@@ -413,6 +418,10 @@
         {#if pricingLoading}
           <div class="pricing-loading">
             <p>Memuat data pricing...</p>
+          </div>
+        {:else if pricings.length === 0}
+          <div class="pricing-loading">
+            <p>Tidak ada data pricing tersedia</p>
           </div>
         {:else}
           <div class="pricing-wrapper three-col">
@@ -1351,6 +1360,11 @@
   }
   .opacity-20 {
     opacity: 0.2;
+  }
+
+  .check-icon.basic {
+    background: #d1fae5;
+    color: #10b981;
   }
 
   .check-icon.pro {
