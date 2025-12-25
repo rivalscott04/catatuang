@@ -1,20 +1,21 @@
 // API helper for admin endpoints
-// Detects if we're in dev mode (Vite proxy) or production (same origin)
+// Development: uses localhost via Vite proxy (relative URLs)
+// Production: uses VITE_API_BASE_URL from .env.prod
 
 const getApiBaseUrl = () => {
-  // Check if we're accessing via Vite dev server (port 5173) or Laravel (port 8000)
-  const hostname = window.location.hostname;
-  const port = window.location.port;
-  
-  // If accessing via Vite dev server (port 5173), use Laravel backend URL
-  // Otherwise, use relative URLs (Laravel serves SPA)
-  if (import.meta.env.DEV && (port === '5173' || port === '')) {
-    // Development via Vite: proxy should handle, but fallback to direct Laravel URL
-    // Try relative first (proxy), if fails, will need to use full URL
+  // In development mode, use relative URLs (Vite proxy handles it)
+  if (import.meta.env.DEV) {
     return '';
   }
   
-  // Production or direct Laravel access: use relative URLs
+  // In production, use VITE_API_BASE_URL from .env.prod
+  const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+  
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+  
+  // Fallback: use relative URLs if VITE_API_BASE_URL not set
   return '';
 };
 
