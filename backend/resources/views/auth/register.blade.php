@@ -60,7 +60,7 @@
                 <!-- Name Input -->
                 <div>
                     <label for="name" class="block text-sm font-medium text-[#0F172A] mb-2">
-                        Nama (Opsional)
+                        Nama <span class="text-red-500">*</span>
                     </label>
                     <input
                         type="text"
@@ -69,10 +69,14 @@
                         value="{{ old('name') }}"
                         placeholder="Nama lengkap"
                         class="block w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:ring-2 focus:ring-[#10B981] focus:border-[#10B981] outline-none transition-all text-[#0F172A] placeholder-[#94A3B8]"
+                        required
                     />
                     <p class="mt-1.5 text-xs text-[#64748B]">
                         Nama akan digunakan untuk personalisasi pesan bot
                     </p>
+                    @error('name')
+                        <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Submit Button -->

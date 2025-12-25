@@ -32,7 +32,7 @@ class AuthController extends Controller
             'plan' => $request->plan,
         ], [
             'phone_number' => 'required|string|min:10|max:20',
-            'name' => 'nullable|string|max:120',
+            'name' => 'required|string|max:120',
             'plan' => 'nullable|string|in:free,pro,vip',
         ]);
 
@@ -78,7 +78,7 @@ class AuthController extends Controller
         // Create new user
         $user = User::create([
             'phone_number' => $phoneNumber,
-            'name' => $request->name ?? null,
+            'name' => $request->name,
             'plan' => $plan,
             'status' => 'active',
             'reminder_enabled' => true,

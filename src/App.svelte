@@ -93,6 +93,13 @@
         return;
       }
 
+      // Validate name
+      if (!name || name.trim() === "") {
+        error = "Nama wajib diisi";
+        loading = false;
+        return;
+      }
+
       // Get CSRF token
       const csrfToken = await getCsrfToken();
 
@@ -115,7 +122,7 @@
         credentials: "include",
         body: JSON.stringify({
           phone_number: cleanPhone,
-          name: name.trim() || null,
+          name: name.trim(),
           plan: selectedPlan,
         }),
       });
@@ -785,14 +792,18 @@
           </div>
 
           <div class="form-group">
-            <label for="name" class="form-label">Nama (Opsional)</label>
+            <label for="name" class="form-label">
+              Nama <span class="required">*</span>
+            </label>
             <input
               type="text"
               id="name"
               bind:value={name}
               placeholder="Nama lengkap"
               class="form-input"
+              required
               disabled={loading}
+              aria-required="true"
             />
             <p class="form-hint">Nama akan digunakan untuk personalisasi pesan bot</p>
           </div>

@@ -27,9 +27,18 @@ jobs:
             git pull
             echo "Kode terbaru udah ditarik!"
             
+            echo "Install dependencies Svelte dulu..."
+            npm install
+            echo "Dependencies terinstall!"
+            
             echo "Build Svelte dulu nih..."
             npm run build
-            echo "Svelte build selesai!"
+            if [ -d "dist" ]; then
+              echo "Svelte build selesai! Folder dist udah ada dan siap dipake."
+            else
+              echo "Warning: Folder dist tidak ditemukan setelah build!"
+              exit 1
+            fi
             
             echo "Sekarang Laravel-nya..."
             cd backend || exit 1
