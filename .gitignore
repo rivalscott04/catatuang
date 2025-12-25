@@ -1,4 +1,8 @@
 # Environment files
+.env
+.env.local
+.env.*.local
+.env.prod
 docker/.env
 backend/.env
 
@@ -19,6 +23,10 @@ backend/.phpunit.result.cache
 # Frontend
 node_modules/
 dist/
+
+# Documentation & Workflows (internal docs)
+wa-finance-bot-docs/
+n8n-workflows/
 
 # n8n data (jika ada di local)
 .n8n/
