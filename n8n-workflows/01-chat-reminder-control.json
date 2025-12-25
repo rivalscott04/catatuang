@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalize payload from GoWA\nconst phone = ($json.from || $json.phone || \"\").toString().trim();\nconst text = ($json.text || $json.message || \"\").toString().toLowerCase();\nconst imageUrl = $json.image_url || $json.imageUrl || null;\nconst imageId = $json.image_id || $json.imageId || null;\n\nreturn [{ json: { phone, text, image_url: imageUrl, image_id: imageId } }];"
+        "jsCode": "// Normalize payload from GoWA\n// Support both flat format (expected) and nested format (GOWA default)\n// Webhook data is in $json.body, but also check $json directly for compatibility\nconst inputData = $json.body || $json || {};\n\n// Debug: log received data\nconsole.log('Received payload:', JSON.stringify($json, null, 2));\nconsole.log('Input data:', JSON.stringify(inputData, null, 2));\nconsole.log('Available keys:', Object.keys(inputData));\n\n// Helper function to extract phone number and clean it\nfunction extractPhone(data) {\n  // Try flat format first\n  let rawPhone = data.from || data.phone || data.phone_number || data.sender || data.wa_id || \"\";\n  \n  // Try nested format (GOWA default format)\n  if (!rawPhone && data.data && data.data.message) {\n    rawPhone = data.data.message.from || data.data.message.fromNumber || \"\";\n  }\n  \n  if (!rawPhone && data.data && data.data.contact) {\n    rawPhone = data.data.contact.id || data.data.contact.phone || \"\";\n  }\n  \n  if (!rawPhone) return \"\";\n  \n  // Clean phone number: remove @s.whatsapp.net, remove +, keep only digits\n  let phone = rawPhone.toString().trim();\n  phone = phone.replace(/@s\\.whatsapp\\.net$/, ''); // Remove WhatsApp suffix\n  phone = phone.replace(/^\\+/, ''); // Remove leading +\n  phone = phone.replace(/\\D/g, ''); // Keep only digits\n  \n  return phone;\n}\n\n// Helper function to extract text\nfunction extractText(data) {\n  // Try flat format first\n  let text = data.text || data.message || data.body || \"\";\n  \n  // Try nested format (GOWA default format)\n  if (!text && data.data && data.data.message) {\n    text = data.data.message.body || data.data.message.text || data.data.message.message || \"\";\n  }\n  \n  return text.toString().toLowerCase();\n}\n\n// Helper function to extract image URL\nfunction extractImageUrl(data) {\n  // Try flat format first\n  let imageUrl = data.image_url || data.imageUrl || data.image || null;\n  \n  // Try nested format\n  if (!imageUrl && data.data && data.data.message) {\n    imageUrl = data.data.message.imageUrl || data.data.message.mediaUrl || null;\n  }\n  \n  return imageUrl;\n}\n\n// Helper function to extract image ID\nfunction extractImageId(data) {\n  // Try flat format first\n  let imageId = data.image_id || data.imageId || null;\n  \n  // Try nested format\n  if (!imageId && data.data && data.data.message) {\n    imageId = data.data.message.mediaId || data.data.message.imageId || null;\n  }\n  \n  return imageId;\n}\n\n// Extract values\nconst phone = extractPhone(inputData);\nconst text = extractText(inputData);\nconst imageUrl = extractImageUrl(inputData);\nconst imageId = extractImageId(inputData);\n\n// Debug: log extracted values\nconsole.log('Extracted phone:', phone);\nconsole.log('Extracted text:', text);\nconsole.log('Extracted image_url:', imageUrl);\nconsole.log('Extracted image_id:', imageId);\n\n// Validate phone is not empty\nif (!phone || phone === \"\") {\n  throw new Error(`Phone number is required. Received payload: ${JSON.stringify($json)}`);\n}\n\nreturn [{ json: { phone, text, image_url: imageUrl, image_id: imageId, original_payload: inputData } }];"
       },
       "id": "normalize",
       "name": "Normalize Payload",
@@ -45,7 +45,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone,\n  name: $json.name || 'User'\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || '',\n  name: $json.name || 'User'\n}) }}",
         "options": {}
       },
       "id": "check-user",
@@ -56,7 +56,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Detect intent from text\nconst text = $json.text || \"\";\nconst lowerText = text.toLowerCase();\n\n// Intent OFF keywords\nconst offKeywords = [\n  'jangan ingat',\n  'jangan diingatkan',\n  'stop reminder',\n  'matikan reminder',\n  'jangan reminder'\n];\n\n// Intent ON keywords\nconst onKeywords = [\n  'nyalakan reminder',\n  'aktifkan reminder',\n  'reminder on'\n];\n\n// Intent ASK keywords\nconst askKeywords = [\n  'kok diingetin',\n  'kenapa diingatkan',\n  'reminder apa',\n  'cara matiin reminder',\n  'gimana stop'\n];\n\n// PDF Report keywords\nconst pdfKeywords = [\n  'buat pdf',\n  'pdf pengeluaran',\n  'laporan pdf',\n  'export pdf',\n  'unduh pdf',\n  'download pdf',\n  'pdf bulan ini',\n  'pdf bulan lalu',\n  'pdf setahun',\n  'pdf tahun ini'\n];\n\n// Transaction type confirmation keywords\nconst incomeKeywords = ['pemasukan', 'income', 'masuk', 'terima', 'dapat'];\nconst expenseKeywords = ['pengeluaran', 'expense', 'keluar', 'bayar', 'beli'];\n\n// Style keywords\nconst styleMap = {\n  'gaya santai': 'santai',\n  'gaya biasa': 'netral',\n  'gaya netral': 'netral',\n  'gaya formal': 'formal',\n  'gaya gaul': 'gaul'\n};\n\nlet intent = 'normal';\nlet style = null;\n\nfor (const key of Object.keys(styleMap)) {\n  if (lowerText.includes(key)) {\n    intent = 'set_style';\n    style = styleMap[key];\n    break;\n  }\n}\n\n// Check if image upload\nif ($json.image_url || $json.image_id) {\n  intent = 'image_upload';\n} else if (intent === 'normal') {\n  // Check transaction type confirmation\n  if (incomeKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_income';\n  } else if (expenseKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_expense';\n  } else if (pdfKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'generate_pdf_expense';\n  } else if (offKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_off';\n  } else if (onKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_on';\n  } else if (askKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'ask_reminder';\n  }\n}\n\nreturn [{ json: { ...$json, intent, style } }];"
+        "jsCode": "// Detect intent from text\n// Preserve phone and text from previous nodes\n// After HTTP Request, $json contains API response with structure: { success: true, data: { phone_number: '...', ... } }\nconst inputData = $input.item?.json || {};\n// Try multiple sources: input data, current json, or nested data.phone_number from API response\nconst phone = inputData.phone || $json.phone || $json.phone_number || $json.data?.phone_number || $json.data?.phone || inputData.data?.phone_number || \"\";\nconst text = inputData.text || $json.text || \"\";\nconst imageUrl = inputData.image_url || $json.image_url || null;\nconst imageId = inputData.image_id || $json.image_id || null;\nconst lowerText = text.toLowerCase();\n\n// Intent OFF keywords\nconst offKeywords = [\n  'jangan ingat',\n  'jangan diingatkan',\n  'stop reminder',\n  'matikan reminder',\n  'jangan reminder'\n];\n\n// Intent ON keywords\nconst onKeywords = [\n  'nyalakan reminder',\n  'aktifkan reminder',\n  'reminder on'\n];\n\n// Intent ASK keywords\nconst askKeywords = [\n  'kok diingetin',\n  'kenapa diingatkan',\n  'reminder apa',\n  'cara matiin reminder',\n  'gimana stop'\n];\n\n// PDF Report keywords\nconst pdfKeywords = [\n  'buat pdf',\n  'pdf pengeluaran',\n  'laporan pdf',\n  'export pdf',\n  'unduh pdf',\n  'download pdf',\n  'pdf bulan ini',\n  'pdf bulan lalu',\n  'pdf setahun',\n  'pdf tahun ini'\n];\n\n// Transaction type confirmation keywords\nconst incomeKeywords = ['pemasukan', 'income', 'masuk', 'terima', 'dapat'];\nconst expenseKeywords = ['pengeluaran', 'expense', 'keluar', 'bayar', 'beli'];\n\n// Greeting keywords (halo, hai, hi, etc.)\nconst greetingKeywords = ['halo', 'hai', 'hi', 'hello', 'hey', 'hallo', 'assalamualaikum', 'assalamu alaikum'];\n\n// Style keywords\nconst styleMap = {\n  'gaya santai': 'santai',\n  'gaya biasa': 'netral',\n  'gaya netral': 'netral',\n  'gaya formal': 'formal',\n  'gaya gaul': 'gaul'\n};\n\nlet intent = 'normal';\nlet style = null;\n\nfor (const key of Object.keys(styleMap)) {\n  if (lowerText.includes(key)) {\n    intent = 'set_style';\n    style = styleMap[key];\n    break;\n  }\n}\n\n// Check if image upload\nif ($json.image_url || $json.image_id) {\n  intent = 'image_upload';\n} else if (intent === 'normal') {\n  // Check greeting first (halo, hai, etc.)\n  if (greetingKeywords.some(kw => lowerText.trim() === kw || lowerText.trim().startsWith(kw + ' ') || lowerText.trim().startsWith(kw + ','))) {\n    intent = 'greeting';\n  } else if (incomeKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_income';\n  } else if (expenseKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_expense';\n  } else if (pdfKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'generate_pdf_expense';\n  } else if (offKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_off';\n  } else if (onKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_on';\n  } else if (askKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'ask_reminder';\n  }\n}\n\nreturn [{ json: { ...$json, phone, text, image_url: imageUrl, image_id: imageId, intent, style } }];"
       },
       "id": "detect-intent",
       "name": "Detect Intent",
@@ -144,6 +144,24 @@
                 "type": "string",
                 "operation": "equals"
               }
+            },
+            {
+              "id": "if-normal",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "normal",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "if-greeting",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "greeting",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "or"
@@ -175,18 +193,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "reminder_enabled",
-              "value": "=false"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  reminder_enabled: false\n}) }}",
         "options": {}
       },
       "id": "update-reminder-off",
@@ -214,18 +222,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "reminder_enabled",
-              "value": "=true"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  reminder_enabled: true\n}) }}",
         "options": {}
       },
       "id": "update-reminder-on",
@@ -253,18 +251,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "style",
-              "value": "={{ $json.style }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  style: $json.style || 'santai'\n}) }}",
         "options": {}
       },
       "id": "update-style",
@@ -302,18 +290,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "period",
-              "value": "={{ $json.period }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  period: $json.period || 'this_month'\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -379,7 +357,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/send/message",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -387,12 +365,16 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Basic b05LRk1PbmE6ekpjUnM2MmtaTFVNaWFQVDJrNDBJSksy"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  to: $json.phone,\n  message: `Laporan PDF pengeluaran ${$json.period_label} sudah siap! Total: Rp ${String($json.total_expense || 0).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')} (${$json.transaction_count || 0} transaksi)`,\n  file: $json.pdf_base64,\n  filename: $json.filename\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  phone: ($json.phone || $json.phone_number || $json.data?.phone_number || '').toString().replace(/^\\+/, ''),\n  message: `Laporan PDF pengeluaran ${$json.period_label} sudah siap! Total: Rp ${String($json.total_expense || 0).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')} (${$json.transaction_count || 0} transaksi)`,\n  file: $json.pdf_base64,\n  filename: $json.filename\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 3,
@@ -425,18 +407,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "image_url",
-              "value": "={{ $json.image_url }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  image_url: $json.image_url || null\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -479,18 +451,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "transaction_type",
-              "value": "=income"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'income'\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -523,18 +485,8 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "phone_number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "transaction_type",
-              "value": "=expense"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'expense'\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -560,13 +512,91 @@
     },
     {
       "parameters": {
-        "jsCode": "// Template pools for responses\nconst styleLabel = ($json.style || '').toString();\nconst templates = {\n  reminder_off: [\n    'Baik, reminder sudah dimatikan. Ketik \"nyalakan reminder\" jika ingin mengaktifkan lagi.',\n    'Reminder sudah dinonaktifkan. Kamu tidak akan diingatkan lagi.',\n    'Oke, reminder dimatikan. Untuk mengaktifkan lagi, ketik \"reminder on\".'\n  ],\n  reminder_on: [\n    'Reminder sudah diaktifkan! Kamu akan diingatkan setiap hari jika belum input transaksi.',\n    'Baik, reminder aktif. Saya akan mengingatkan kamu setiap hari.',\n    'Reminder sudah nyala. Kamu akan mendapat notifikasi harian.'\n  ],\n  ask_reminder: [\n    'Reminder adalah notifikasi harian untuk mengingatkan kamu mencatat transaksi. Ketik \"jangan ingat\" untuk mematikan, atau \"reminder on\" untuk mengaktifkan.',\n    'Saya akan mengingatkan kamu setiap hari jika belum input transaksi. Untuk mematikan: ketik \"jangan diingatkan\".',\n    'Reminder membantu kamu tidak lupa mencatat keuangan. Matikan dengan \"stop reminder\" atau aktifkan dengan \"reminder on\".'\n  ],\n  set_style: [\n    `Gaya balasan diatur ke ${styleLabel}.`,\n    `Siap! Sekarang gaya balasan ${styleLabel}.`,\n    `Done, gaya balasan diganti ke ${styleLabel}.`\n  ],\n  normal: [\n    'Halo! Saya bot pencatat keuangan. Ketik \"reminder apa\" untuk info lebih lanjut.',\n    'Hai! Saya siap membantu mencatat keuangan kamu. Ketik \"reminder apa\" untuk info reminder.',\n    'Selamat datang! Gunakan saya untuk mencatat transaksi. Ketik \"reminder apa\" untuk info.'\n  ]\n};\n\nconst intent = $json.intent || 'normal';\nconst pool = templates[intent] || templates.normal;\nconst message = pool[Math.floor(Math.random() * pool.length)];\n\n// Random delay 1-3 seconds\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
+        "jsCode": "// Parse transaction from text (e.g., 'nonton bioskop 140k' or 'snack bioskop 120k')\nconst text = ($json.text || $json.original_payload?.text || '').toString().trim();\nconst phone = $json.phone || $json.phone_number || $json.data?.phone_number || '';\n\n// Regex patterns untuk extract amount dan description\n// Format: description amount atau amount description\n// Support: 140k, 140000, Rp 140.000, 140rb, etc.\nconst patterns = [\n  // Pattern 1: description amount (e.g., 'nonton bioskop 140k')\n  /^(.+?)\\s+((?:rp\\s*)?(?:\\d{1,3}(?:\\.|,)?\\d{3})*(?:k|rb|ribu)?|(?:\\d+)(?:k|rb|ribu)?)$/i,\n  // Pattern 2: amount description (e.g., '140k nonton bioskop')\n  /^((?:rp\\s*)?(?:\\d{1,3}(?:\\.|,)?\\d{3})*(?:k|rb|ribu)?|(?:\\d+)(?:k|rb|rb)?)\\s+(.+)$/i\n];\n\nlet amount = null;\nlet description = null;\nlet transactionType = 'expense'; // default expense\n\n// Try to parse\nfor (const pattern of patterns) {\n  const match = text.match(pattern);\n  if (match) {\n    const part1 = match[1].trim();\n    const part2 = match[2].trim();\n    \n    // Check which part is amount\n    const amountPattern = /(?:rp\\s*)?(?:\\d{1,3}(?:\\.|,)?\\d{3})*(?:k|rb|ribu)?|(?:\\d+)(?:k|rb|ribu)?/i;\n    \n    if (amountPattern.test(part1)) {\n      // part1 is amount, part2 is description\n      amount = part1;\n      description = part2;\n    } else if (amountPattern.test(part2)) {\n      // part2 is amount, part1 is description\n      amount = part2;\n      description = part1;\n    }\n    break;\n  }\n}\n\n// Convert amount to number\nif (amount) {\n  // Remove 'rp', 'k', 'rb', 'ribu', dots, commas\n  let amountStr = amount.toString().toLowerCase()\n    .replace(/rp\\s*/gi, '')\n    .replace(/[.,]/g, '')\n    .replace(/k|rb|ribu/g, '000');\n  \n  // Extract numbers only\n  amountStr = amountStr.replace(/\\D/g, '');\n  amount = parseInt(amountStr) || null;\n}\n\n// If no description, use full text\nif (!description && amount) {\n  description = text.replace(amount.toString(), '').trim();\n}\n\n// Determine type: expense by default, income if contains keywords\nconst incomeKeywords = ['gaji', 'bonus', 'masuk', 'terima', 'dapat', 'income'];\nif (incomeKeywords.some(kw => text.toLowerCase().includes(kw))) {\n  transactionType = 'income';\n}\n\n// Check if we have valid transaction data\nconst hasTransaction = amount && amount > 0 && description && description.length > 0;\n\nreturn [{ json: { \n  ...$json, \n  phone,\n  text,\n  parsed_amount: amount,\n  parsed_description: description,\n  parsed_type: transactionType,\n  has_transaction: hasTransaction\n} }];"
+      },
+      "id": "parse-transaction",
+      "name": "Parse Transaction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-has-transaction",
+              "leftValue": "={{ $json.has_transaction }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-has-transaction",
+      "name": "Check Has Transaction",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.catatuang.click/api/internal/transactions/batch",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transactions: [{\n    tanggal: new Date().toISOString().split('T')[0],\n    amount: $json.parsed_amount,\n    description: $json.parsed_description,\n    type: $json.parsed_type || 'expense',\n    source: 'text'\n  }]\n}) }}",
+        "options": {}
+      },
+      "id": "save-transaction",
+      "name": "Save Transaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate confirmation message after saving transaction\nconst style = ($json.data?.response_style || $json.response_style || 'santai').toLowerCase();\nconst amount = $json.parsed_amount || 0;\nconst description = $json.parsed_description || '';\nconst type = $json.parsed_type || 'expense';\nconst typeLabel = type === 'income' ? 'pemasukan' : 'pengeluaran';\n\nconst messages = {\n  santai: [\n    `Oke, ${typeLabel} sudah dicatat! ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`,\n    `Done! ${typeLabel} tersimpan. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`,\n    `Siap! ${typeLabel} masuk ke catatan. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`\n  ],\n  netral: [\n    `Transaksi ${typeLabel} berhasil dicatat. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`,\n    `Transaksi ${typeLabel} telah disimpan. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`\n  ],\n  formal: [\n    `Transaksi ${typeLabel} telah berhasil dicatat. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`,\n    `Transaksi ${typeLabel} telah disimpan ke dalam catatan. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`\n  ],\n  gaul: [\n    `Oke, ${typeLabel} udah masuk! ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`,\n    `Done! ${typeLabel} tersimpan. ${description} - Rp ${String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`\n  ]\n};\n\nconst pool = messages[style] || messages.santai;\nconst message = pool[Math.floor(Math.random() * pool.length)];\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
+      },
+      "id": "generate-transaction-confirmation",
+      "name": "Generate Transaction Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Template pools for responses\nconst styleLabel = ($json.style || '').toString();\n\n// Get user name and response style from API response\nconst userName = $json.data?.name || $json.name || 'User';\nconst responseStyle = ($json.data?.response_style || $json.response_style || 'santai').toLowerCase();\n\n// Greeting templates by style\nconst greetingTemplates = {\n  santai: [\n    `Halo ${userName}, kabar hari ini gimana? Hari ini mau apa?`,\n    `Hai ${userName}, kabar baik kan? Hari ini ada yang mau dicatat?`,\n    `Halo ${userName}! Gimana kabarnya? Hari ini mau catat transaksi apa?`\n  ],\n  netral: [\n    `Halo ${userName}, bagaimana kabar hari ini? Hari ini ada yang ingin dicatat?`,\n    `Hai ${userName}, kabar baik? Hari ini mau melakukan apa?`,\n    `Halo ${userName}, bagaimana kabarnya hari ini? Ada transaksi yang mau dicatat?`\n  ],\n  formal: [\n    `Halo ${userName}, bagaimana kabar Anda hari ini? Hari ini ada yang ingin dicatat?`,\n    `Selamat pagi/siang/sore ${userName}, bagaimana kabarnya? Ada transaksi yang ingin dicatat hari ini?`,\n    `Halo ${userName}, semoga kabar Anda baik. Hari ini ada transaksi yang perlu dicatat?`\n  ],\n  gaul: [\n    `Halo ${userName}, kabar gimana nih? Hari ini mau apa?`,\n    `Hai ${userName}, kabar oke kan? Hari ini ada yang mau dicatat?`,\n    `Halo ${userName}! Gimana kabarnya? Hari ini mau catat apa?`\n  ]\n};\n\nconst templates = {\n  greeting: greetingTemplates[responseStyle] || greetingTemplates.santai,\n  reminder_off: [\n    'Baik, reminder sudah dimatikan. Ketik \"nyalakan reminder\" jika ingin mengaktifkan lagi.',\n    'Reminder sudah dinonaktifkan. Kamu tidak akan diingatkan lagi.',\n    'Oke, reminder dimatikan. Untuk mengaktifkan lagi, ketik \"reminder on\".'\n  ],\n  reminder_on: [\n    'Reminder sudah diaktifkan! Kamu akan diingatkan setiap hari jika belum input transaksi.',\n    'Baik, reminder aktif. Saya akan mengingatkan kamu setiap hari.',\n    'Reminder sudah nyala. Kamu akan mendapat notifikasi harian.'\n  ],\n  ask_reminder: [\n    'Reminder adalah notifikasi harian untuk mengingatkan kamu mencatat transaksi. Ketik \"jangan ingat\" untuk mematikan, atau \"reminder on\" untuk mengaktifkan.',\n    'Saya akan mengingatkan kamu setiap hari jika belum input transaksi. Untuk mematikan: ketik \"jangan diingatkan\".',\n    'Reminder membantu kamu tidak lupa mencatat keuangan. Matikan dengan \"stop reminder\" atau aktifkan dengan \"reminder on\".'\n  ],\n  set_style: [\n    `Gaya balasan diatur ke ${styleLabel}.`,\n    `Siap! Sekarang gaya balasan ${styleLabel}.`,\n    `Done, gaya balasan diganti ke ${styleLabel}.`\n  ],\n  normal: [\n    'Halo! Saya bot pencatat keuangan. Ketik \"reminder apa\" untuk info lebih lanjut.',\n    'Hai! Saya siap membantu mencatat keuangan kamu. Ketik \"reminder apa\" untuk info reminder.',\n    'Selamat datang! Gunakan saya untuk mencatat transaksi. Ketik \"reminder apa\" untuk info.'\n  ]\n};\n\nconst intent = $json.intent || 'normal';\nconst pool = templates[intent] || templates.normal;\nconst message = pool[Math.floor(Math.random() * pool.length)];\n\n// Random delay 1-3 seconds\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
       },
       "id": "generate-reply",
       "name": "Generate Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 300]
+      "position": [1850, 400]
     },
     {
       "parameters": {
@@ -582,7 +612,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/send/message",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -590,22 +620,16 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Basic b05LRk1PbmE6ekpjUnM2MmtaTFVNaWFQVDJrNDBJSksy"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "to",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "message",
-              "value": "={{ $json.replyMessage }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  phone: ($json.phone || $json.phone_number || $json.data?.phone_number || '').toString().replace(/^\\+/, ''),\n  message: $json.replyMessage || ''\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 3,
@@ -653,7 +677,9 @@
         [{ "node": "Extract Period", "type": "main", "index": 0 }],
         [{ "node": "Create Pending Upload", "type": "main", "index": 0 }],
         [{ "node": "Confirm Income", "type": "main", "index": 0 }],
-        [{ "node": "Confirm Expense", "type": "main", "index": 0 }]
+        [{ "node": "Confirm Expense", "type": "main", "index": 0 }],
+        [{ "node": "Parse Transaction", "type": "main", "index": 0 }],
+        [{ "node": "Generate Reply", "type": "main", "index": 0 }]
       ]
     },
     "Update Reminder OFF": {
@@ -708,6 +734,21 @@
       "main": [[{ "node": "Generate Confirmation", "type": "main", "index": 0 }]]
     },
     "Generate Confirmation": {
+      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+    },
+    "Parse Transaction": {
+      "main": [[{ "node": "Check Has Transaction", "type": "main", "index": 0 }]]
+    },
+    "Check Has Transaction": {
+      "main": [
+        [{ "node": "Save Transaction", "type": "main", "index": 0 }],
+        [{ "node": "Generate Reply", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Transaction": {
+      "main": [[{ "node": "Generate Transaction Confirmation", "type": "main", "index": 0 }]]
+    },
+    "Generate Transaction Confirmation": {
       "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
     }
   },

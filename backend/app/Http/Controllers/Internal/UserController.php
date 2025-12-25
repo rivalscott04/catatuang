@@ -64,6 +64,7 @@ class UserController extends Controller
             'success' => true,
             'data' => [
                 'phone_number' => $user->phone_number,
+                'name' => $user->name,
                 'response_style' => $user->response_style,
                 'reminder_enabled' => $user->reminder_enabled,
                 'status' => $user->status,

@@ -81,7 +81,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/send/message",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -89,6 +89,10 @@
             {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Basic b05LRk1PbmE6ekpjUnM2MmtaTFVNaWFQVDJrNDBJSksy"
             }
           ]
         },
@@ -96,7 +100,7 @@
         "bodyParameters": {
           "parameters": [
             {
-              "name": "to",
+              "name": "phone",
               "value": "={{ $json.phone_number }}"
             },
             {
