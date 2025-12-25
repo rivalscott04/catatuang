@@ -5,6 +5,36 @@
   import SuccessModal from "./lib/SuccessModal.svelte";
   import { onMount } from "svelte";
 
+  // API helper - same as admin
+  const getApiBaseUrl = () => {
+    // In development mode, use relative URLs (Vite proxy handles it)
+    if (import.meta.env.DEV) {
+      return '';
+    }
+    
+    // In production, use VITE_API_BASE_URL from .env.prod (injected at build time)
+    const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+    
+    if (envApiUrl) {
+      return envApiUrl;
+    }
+    
+    // Fallback: try to detect backend API URL from current domain
+    const hostname = window.location.hostname;
+    
+    // If on catatuang.click, try api.catatuang.click
+    if (hostname === 'catatuang.click' || hostname.includes('catatuang')) {
+      const fallbackUrl = 'https://api.catatuang.click';
+      console.warn('VITE_API_BASE_URL not set in build! Using fallback:', fallbackUrl);
+      return fallbackUrl;
+    }
+    
+    // Default fallback: use relative URLs
+    return '';
+  };
+
+  const apiBaseUrl = getApiBaseUrl();
+
   let showRegisterModal = false;
   let showSuccessModal = false;
   let phoneNumber = "";
@@ -38,7 +68,7 @@
     // Fetch bot number from backend
     (async () => {
       try {
-        const response = await fetch("/api/bot-number", {
+        const response = await fetch(`${apiBaseUrl}/api/bot-number`, {
           method: "GET",
           credentials: "include",
         });
@@ -56,7 +86,7 @@
     (async () => {
       pricingLoading = true;
       try {
-        const response = await fetch("/api/pricing", {
+        const response = await fetch(`${apiBaseUrl}/api/pricing`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -158,7 +188,7 @@
 
   async function getCsrfToken() {
     try {
-      const response = await fetch("/csrf-token", {
+      const response = await fetch(`${apiBaseUrl}/csrf-token`, {
         method: "GET",
         credentials: "include",
       });
@@ -199,7 +229,7 @@
       // Clean phone number (remove spaces, dashes, etc.)
       const cleanPhone = phoneNumber.replace(/\s+/g, "").replace(/-/g, "");
 
-      const response = await fetch("/api/register", {
+      const response = await fetch(`${apiBaseUrl}/api/register`, {
         method: "POST",
         headers: headers,
         credentials: "include",
