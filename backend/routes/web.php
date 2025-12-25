@@ -11,10 +11,6 @@ Route::get('/csrf-token', function () {
     return response()->json(['token' => csrf_token()]);
 });
 
-// Registration API routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::get('/api/bot-number', [AuthController::class, 'getBotNumber']);
-
 // Admin API routes only (no views, frontend handles routing)
 Route::prefix('admin')->group(function () {
     // Public admin API routes with rate limiting

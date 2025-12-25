@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Internal\ReminderController;
 use App\Http\Controllers\Internal\UserController;
 use App\Http\Controllers\Internal\TransactionController;
@@ -8,6 +9,16 @@ use App\Http\Controllers\Internal\SubscriptionController;
 use App\Http\Controllers\Internal\ReportController;
 use App\Http\Controllers\Internal\UploadController;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Public API Routes
+|--------------------------------------------------------------------------
+*/
+
+// Public registration endpoint (no authentication required)
+Route::post('/register', [AuthController::class, 'register']);
+Route::get('/bot-number', [AuthController::class, 'getBotNumber']);
 
 /*
 |--------------------------------------------------------------------------

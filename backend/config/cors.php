@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'admin/*', 'csrf-token', 'register'],
+    'paths' => ['api/*', 'admin/*', 'csrf-token'],
 
     'allowed_methods' => ['*'],
 

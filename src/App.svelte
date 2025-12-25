@@ -128,23 +128,16 @@
         return;
       }
 
-      // Get CSRF token
-      const csrfToken = await getCsrfToken();
-
       const headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "X-Requested-With": "XMLHttpRequest",
       };
 
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
-
       // Clean phone number (remove spaces, dashes, etc.)
       const cleanPhone = phoneNumber.replace(/\s+/g, "").replace(/-/g, "");
 
-      const response = await fetch("/register", {
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: headers,
         credentials: "include",
