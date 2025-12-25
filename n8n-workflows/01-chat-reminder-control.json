@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalize payload from GoWA\nconst phone = ($json.from || $json.phone || \"\").toString().trim();\nconst text = ($json.text || $json.message || \"\").toString().toLowerCase();\n\nreturn [{ json: { phone, text } }];"
+        "jsCode": "// Normalize payload from GoWA\nconst phone = ($json.from || $json.phone || \"\").toString().trim();\nconst text = ($json.text || $json.message || \"\").toString().toLowerCase();\nconst imageUrl = $json.image_url || $json.imageUrl || null;\nconst imageId = $json.image_id || $json.imageId || null;\n\nreturn [{ json: { phone, text, image_url: imageUrl, image_id: imageId } }];"
       },
       "id": "normalize",
       "name": "Normalize Payload",
@@ -67,7 +67,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Detect intent from text\nconst text = $json.text || \"\";\nconst lowerText = text.toLowerCase();\n\n// Intent OFF keywords\nconst offKeywords = [\n  'jangan ingat',\n  'jangan diingatkan',\n  'stop reminder',\n  'matikan reminder',\n  'jangan reminder'\n];\n\n// Intent ON keywords\nconst onKeywords = [\n  'nyalakan reminder',\n  'aktifkan reminder',\n  'reminder on'\n];\n\n// Intent ASK keywords\nconst askKeywords = [\n  'kok diingetin',\n  'kenapa diingatkan',\n  'reminder apa',\n  'cara matiin reminder',\n  'gimana stop'\n];\n\n// Style keywords\nconst styleMap = {\n  'gaya santai': 'santai',\n  'gaya biasa': 'netral',\n  'gaya netral': 'netral',\n  'gaya formal': 'formal',\n  'gaya gaul': 'gaul'\n};\n\nlet intent = 'normal';\nlet style = null;\n\nfor (const key of Object.keys(styleMap)) {\n  if (lowerText.includes(key)) {\n    intent = 'set_style';\n    style = styleMap[key];\n    break;\n  }\n}\n\nif (intent === 'normal') {\n  if (offKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_off';\n  } else if (onKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_on';\n  } else if (askKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'ask_reminder';\n  }\n}\n\nreturn [{ json: { ...$json, intent, style } }];"
+        "jsCode": "// Detect intent from text\nconst text = $json.text || \"\";\nconst lowerText = text.toLowerCase();\n\n// Intent OFF keywords\nconst offKeywords = [\n  'jangan ingat',\n  'jangan diingatkan',\n  'stop reminder',\n  'matikan reminder',\n  'jangan reminder'\n];\n\n// Intent ON keywords\nconst onKeywords = [\n  'nyalakan reminder',\n  'aktifkan reminder',\n  'reminder on'\n];\n\n// Intent ASK keywords\nconst askKeywords = [\n  'kok diingetin',\n  'kenapa diingatkan',\n  'reminder apa',\n  'cara matiin reminder',\n  'gimana stop'\n];\n\n// PDF Report keywords\nconst pdfKeywords = [\n  'buat pdf',\n  'pdf pengeluaran',\n  'laporan pdf',\n  'export pdf',\n  'unduh pdf',\n  'download pdf',\n  'pdf bulan ini',\n  'pdf bulan lalu',\n  'pdf setahun',\n  'pdf tahun ini'\n];\n\n// Transaction type confirmation keywords\nconst incomeKeywords = ['pemasukan', 'income', 'masuk', 'terima', 'dapat'];\nconst expenseKeywords = ['pengeluaran', 'expense', 'keluar', 'bayar', 'beli'];\n\n// Style keywords\nconst styleMap = {\n  'gaya santai': 'santai',\n  'gaya biasa': 'netral',\n  'gaya netral': 'netral',\n  'gaya formal': 'formal',\n  'gaya gaul': 'gaul'\n};\n\nlet intent = 'normal';\nlet style = null;\n\nfor (const key of Object.keys(styleMap)) {\n  if (lowerText.includes(key)) {\n    intent = 'set_style';\n    style = styleMap[key];\n    break;\n  }\n}\n\n// Check if image upload\nif ($json.image_url || $json.image_id) {\n  intent = 'image_upload';\n} else if (intent === 'normal') {\n  // Check transaction type confirmation\n  if (incomeKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_income';\n  } else if (expenseKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'confirm_expense';\n  } else if (pdfKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'generate_pdf_expense';\n  } else if (offKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_off';\n  } else if (onKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'reminder_on';\n  } else if (askKeywords.some(kw => lowerText.includes(kw))) {\n    intent = 'ask_reminder';\n  }\n}\n\nreturn [{ json: { ...$json, intent, style } }];"
       },
       "id": "detect-intent",
       "name": "Detect Intent",
@@ -115,6 +115,42 @@
               "id": "if-set-style",
               "leftValue": "={{ $json.intent }}",
               "rightValue": "set_style",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "if-generate-pdf",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "generate_pdf_expense",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "if-image-upload",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "image_upload",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "if-confirm-income",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "confirm_income",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "if-confirm-expense",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "confirm_expense",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -253,6 +289,296 @@
     },
     {
       "parameters": {
+        "jsCode": "// Extract period from text\nconst text = ($json.text || \"\").toLowerCase();\nlet period = 'this_month'; // default\n\nif (text.includes('bulan lalu') || text.includes('bulan kemarin')) {\n  period = 'last_month';\n} else if (text.includes('setahun') || text.includes('tahun ini') || text.includes('sepanjang tahun')) {\n  period = 'this_year';\n} else if (text.includes('bulan ini') || text.includes('bulan sekarang')) {\n  period = 'this_month';\n}\n\nreturn [{ json: { ...$json, period } }];"
+      },
+      "id": "extract-period",
+      "name": "Extract Period",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/internal/reports/pdf-expense-monthly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "period",
+              "value": "={{ $json.period }}"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxRetries": 2,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "generate-pdf-report",
+      "name": "Generate PDF Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle PDF response - check if success or error\nconst response = $json.body || $json;\n\nif (response.success === true) {\n  // Success: ada PDF\n  return [{\n    json: {\n      ...$json,\n      pdf_success: true,\n      pdf_base64: response.data.pdf_base64,\n      filename: response.data.filename,\n      period_label: response.data.period_label,\n      total_expense: response.data.total_expense,\n      transaction_count: response.data.transaction_count\n    }\n  }];\n} else {\n  // Error: plan tidak support atau subscription expired\n  return [{\n    json: {\n      ...$json,\n      pdf_success: false,\n      error_message: response.message || 'Error generating PDF',\n      error_data: response.data || {},\n      response_style: response.data?.response_style || 'santai'\n    }\n  }];\n}"
+      },
+      "id": "handle-pdf-response",
+      "name": "Handle PDF Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-pdf-success",
+              "leftValue": "={{ $json.pdf_success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "switch-pdf-response",
+      "name": "Switch PDF Response",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1850, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate error message sesuai response_style\nconst style = $json.response_style || 'santai';\nconst errorData = $json.error_data || {};\n\nconst messages = {\n  santai: 'Wah, fitur PDF report ini cuma buat plan Pro/VIP nih. Upgrade dulu yuk!',\n  netral: 'Fitur PDF report hanya tersedia untuk plan Pro dan VIP. Silakan upgrade plan Anda.',\n  formal: 'Maaf, fitur laporan PDF hanya dapat diakses oleh pengguna plan Pro dan VIP. Mohon upgrade plan terlebih dahulu.',\n  gaul: 'Eits, PDF report cuma buat plan Pro/VIP aja nih. Upgrade dulu dong!'\n};\n\nconst message = messages[style] || messages.netral;\n\nreturn [{ json: { ...$json, replyMessage: message } }];"
+      },
+      "id": "generate-error-message",
+      "name": "Generate Error Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2050, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOWA_URL }}/api/send",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  to: $json.phone,\n  message: `Laporan PDF pengeluaran ${$json.period_label} sudah siap! Total: Rp ${String($json.total_expense || 0).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')} (${$json.transaction_count || 0} transaksi)`,\n  file: $json.pdf_base64,\n  filename: $json.filename\n}) }}",
+        "options": {
+          "retry": {
+            "maxRetries": 3,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "send-pdf-gowa",
+      "name": "Send PDF via GoWA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.image_url }}"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxRetries": 2,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "create-pending-upload",
+      "name": "Create Pending Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate question sesuai response_style\nconst style = ($json.data?.response_style || $json.response_style || 'santai').toLowerCase();\n\nconst questions = {\n  santai: [\n    'Wah, dapat gambar nih! Ini pemasukan atau pengeluaran?',\n    'Oke gambar udah diterima. Ini masuk atau keluar?',\n    'Gambar sudah sampai! Ini pemasukan atau pengeluaran ya?'\n  ],\n  netral: [\n    'Gambar diterima. Apakah ini pemasukan atau pengeluaran?',\n    'Gambar sudah diterima. Silakan konfirmasi: pemasukan atau pengeluaran?',\n    'Gambar berhasil diterima. Ini pemasukan atau pengeluaran?'\n  ],\n  formal: [\n    'Gambar telah diterima. Mohon konfirmasi: pemasukan atau pengeluaran?',\n    'Gambar berhasil diterima. Silakan tentukan jenis transaksi: pemasukan atau pengeluaran?',\n    'Gambar telah kami terima. Mohon konfirmasi jenis transaksi: pemasukan atau pengeluaran?'\n  ],\n  gaul: [\n    'Dapet gambar nih! Ini masuk atau keluar?',\n    'Gambar udah sampe! Ini pemasukan atau pengeluaran?',\n    'Oke gambar masuk! Ini masuk atau keluar ya?'\n  ]\n};\n\nconst pool = questions[style] || questions.santai;\nconst message = pool[Math.floor(Math.random() * pool.length)];\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
+      },
+      "id": "generate-question",
+      "name": "Generate Question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "transaction_type",
+              "value": "=income"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxRetries": 2,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "confirm-income",
+      "name": "Confirm Income",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "transaction_type",
+              "value": "=expense"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxRetries": 2,
+            "retryOnFail": true
+          }
+        }
+      },
+      "id": "confirm-expense",
+      "name": "Confirm Expense",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate confirmation message sesuai response_style\nconst style = ($json.data?.response_style || $json.response_style || 'santai').toLowerCase();\nconst transactionType = $json.data?.transaction_type || 'expense';\nconst amount = $json.data?.amount || null;\nconst typeLabel = transactionType === 'income' ? 'pemasukan' : 'pengeluaran';\n\nconst messages = {\n  santai: [\n    `Oke, transaksi ${typeLabel} sudah dicatat!${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Done! ${typeLabel} sudah masuk ke catatan.${amount ? ' Total: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Siap! ${typeLabel} sudah tersimpan.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`\n  ],\n  netral: [\n    `Transaksi ${typeLabel} berhasil dicatat.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Transaksi ${typeLabel} telah disimpan.${amount ? ' Total: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Transaksi ${typeLabel} berhasil ditambahkan.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`\n  ],\n  formal: [\n    `Transaksi ${typeLabel} telah berhasil dicatat.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Transaksi ${typeLabel} telah disimpan ke dalam catatan.${amount ? ' Total: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Transaksi ${typeLabel} berhasil ditambahkan ke sistem.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`\n  ],\n  gaul: [\n    `Oke, ${typeLabel} udah masuk!${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Done! ${typeLabel} tersimpan.${amount ? ' Total: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`,\n    `Siap! ${typeLabel} masuk ke catatan.${amount ? ' Jumlah: Rp ' + String(amount).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') : ''}`\n  ]\n};\n\nconst pool = messages[style] || messages.santai;\nconst message = pool[Math.floor(Math.random() * pool.length)];\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
+      },
+      "id": "generate-confirmation",
+      "name": "Generate Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 700]
+    },
+    {
+      "parameters": {
         "jsCode": "// Template pools for responses\nconst styleLabel = ($json.style || '').toString();\nconst templates = {\n  reminder_off: [\n    'Baik, reminder sudah dimatikan. Ketik \"nyalakan reminder\" jika ingin mengaktifkan lagi.',\n    'Reminder sudah dinonaktifkan. Kamu tidak akan diingatkan lagi.',\n    'Oke, reminder dimatikan. Untuk mengaktifkan lagi, ketik \"reminder on\".'\n  ],\n  reminder_on: [\n    'Reminder sudah diaktifkan! Kamu akan diingatkan setiap hari jika belum input transaksi.',\n    'Baik, reminder aktif. Saya akan mengingatkan kamu setiap hari.',\n    'Reminder sudah nyala. Kamu akan mendapat notifikasi harian.'\n  ],\n  ask_reminder: [\n    'Reminder adalah notifikasi harian untuk mengingatkan kamu mencatat transaksi. Ketik \"jangan ingat\" untuk mematikan, atau \"reminder on\" untuk mengaktifkan.',\n    'Saya akan mengingatkan kamu setiap hari jika belum input transaksi. Untuk mematikan: ketik \"jangan diingatkan\".',\n    'Reminder membantu kamu tidak lupa mencatat keuangan. Matikan dengan \"stop reminder\" atau aktifkan dengan \"reminder on\".'\n  ],\n  set_style: [\n    `Gaya balasan diatur ke ${styleLabel}.`,\n    `Siap! Sekarang gaya balasan ${styleLabel}.`,\n    `Done, gaya balasan diganti ke ${styleLabel}.`\n  ],\n  normal: [\n    'Halo! Saya bot pencatat keuangan. Ketik \"reminder apa\" untuk info lebih lanjut.',\n    'Hai! Saya siap membantu mencatat keuangan kamu. Ketik \"reminder apa\" untuk info reminder.',\n    'Selamat datang! Gunakan saya untuk mencatat transaksi. Ketik \"reminder apa\" untuk info.'\n  ]\n};\n\nconst intent = $json.intent || 'normal';\nconst pool = templates[intent] || templates.normal;\nconst message = pool[Math.floor(Math.random() * pool.length)];\n\n// Random delay 1-3 seconds\nconst delay = Math.floor(Math.random() * 2000) + 1000;\n\nreturn [{ json: { ...$json, replyMessage: message, delay } }];"
       },
       "id": "generate-reply",
@@ -343,7 +669,11 @@
         [{ "node": "Update Reminder OFF", "type": "main", "index": 0 }],
         [{ "node": "Update Reminder ON", "type": "main", "index": 0 }],
         [{ "node": "Generate Reply", "type": "main", "index": 0 }],
-        [{ "node": "Update Style", "type": "main", "index": 0 }]
+        [{ "node": "Update Style", "type": "main", "index": 0 }],
+        [{ "node": "Extract Period", "type": "main", "index": 0 }],
+        [{ "node": "Create Pending Upload", "type": "main", "index": 0 }],
+        [{ "node": "Confirm Income", "type": "main", "index": 0 }],
+        [{ "node": "Confirm Expense", "type": "main", "index": 0 }]
       ]
     },
     "Update Reminder OFF": {
@@ -363,6 +693,42 @@
     },
     "Send WhatsApp (GoWA)": {
       "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    },
+    "Extract Period": {
+      "main": [[{ "node": "Generate PDF Report", "type": "main", "index": 0 }]]
+    },
+    "Generate PDF Report": {
+      "main": [[{ "node": "Handle PDF Response", "type": "main", "index": 0 }]]
+    },
+    "Handle PDF Response": {
+      "main": [[{ "node": "Switch PDF Response", "type": "main", "index": 0 }]]
+    },
+    "Switch PDF Response": {
+      "main": [
+        [{ "node": "Send PDF via GoWA", "type": "main", "index": 0 }],
+        [{ "node": "Generate Error Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Error Message": {
+      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+    },
+    "Send PDF via GoWA": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    },
+    "Create Pending Upload": {
+      "main": [[{ "node": "Generate Question", "type": "main", "index": 0 }]]
+    },
+    "Generate Question": {
+      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+    },
+    "Confirm Income": {
+      "main": [[{ "node": "Generate Confirmation", "type": "main", "index": 0 }]]
+    },
+    "Confirm Expense": {
+      "main": [[{ "node": "Generate Confirmation", "type": "main", "index": 0 }]]
+    },
+    "Generate Confirmation": {
+      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
     }
   },
   "pinData": {},

@@ -200,5 +200,73 @@ class AdminAuthController extends Controller
             'message' => 'Password berhasil diperbarui.',
         ]);
     }
+
+    /**
+     * Update admin username
+     */
+    public function updateUsername(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not authenticated',
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-zA-Z0-9_]+$/',
+                'unique:admins,username,' . $admin->id,
+            ],
+        ], [
+            'username.required' => 'Username wajib diisi.',
+            'username.min' => 'Username minimal 3 karakter.',
+            'username.max' => 'Username maksimal 50 karakter.',
+            'username.regex' => 'Username hanya boleh mengandung huruf, angka, dan underscore (_).',
+            'username.unique' => 'Username sudah digunakan. Silakan pilih username lain.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Check if new username is same as current username
+        if ($request->username === $admin->username) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Username baru harus berbeda dengan username saat ini.',
+                'errors' => [
+                    'username' => ['Username baru harus berbeda dengan username saat ini.'],
+                ],
+            ], 422);
+        }
+
+        // Update username
+        $admin->username = $request->username;
+        $admin->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Username berhasil diperbarui.',
+            'data' => [
+                'admin' => [
+                    'id' => $admin->id,
+                    'username' => $admin->username,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                ],
+            ],
+        ]);
+    }
 }
 

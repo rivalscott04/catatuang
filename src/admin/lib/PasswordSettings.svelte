@@ -1,11 +1,15 @@
 <script>
   import { apiFetch } from './api.js';
   import Toast from './Toast.svelte';
+  import { onMount } from 'svelte';
 
   let currentPassword = '';
   let newPassword = '';
   let confirmPassword = '';
+  let newUsername = '';
+  let currentUsername = '';
   let loading = false;
+  let loadingUsername = false;
   let showToast = false;
   let toastMessage = '';
   let toastType = 'success';
@@ -22,6 +26,24 @@
 
   // Weak passwords to check
   const weakPasswords = ['admin123', 'password123', 'admin', 'password', '12345678', 'qwerty123'];
+
+  onMount(async () => {
+    // Fetch current admin info to get username
+    try {
+      const response = await apiFetch('/admin/me', {
+        method: 'GET',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.admin) {
+          currentUsername = data.data.admin.username;
+          newUsername = data.data.admin.username;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch admin info:', err);
+    }
+  });
 
   async function getCsrfToken() {
     try {
@@ -177,13 +199,110 @@
       loading = false;
     }
   }
+
+  function validateUsername() {
+    if (!newUsername || newUsername.trim() === '') {
+      return false;
+    }
+    if (newUsername.length < 3) {
+      return false;
+    }
+    if (newUsername.length > 50) {
+      return false;
+    }
+    // Only allow alphanumeric and underscore
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      return false;
+    }
+    return true;
+  }
+
+  async function handleUsernameSubmit(e) {
+    e.preventDefault();
+    
+    if (!validateUsername()) {
+      showToastMessage('Username harus 3-50 karakter dan hanya boleh huruf, angka, dan underscore', 'error');
+      return;
+    }
+
+    if (newUsername === currentUsername) {
+      showToastMessage('Username baru harus berbeda dengan username saat ini', 'error');
+      return;
+    }
+
+    loadingUsername = true;
+
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      const response = await apiFetch('/admin/username', {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({
+          username: newUsername,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showToastMessage('Username berhasil diperbarui!', 'success');
+        currentUsername = newUsername;
+      } else {
+        showToastMessage(data.message || 'Gagal memperbarui username', 'error');
+      }
+    } catch (err) {
+      console.error('Update username error:', err);
+      showToastMessage('Terjadi kesalahan. Silakan coba lagi.', 'error');
+    } finally {
+      loadingUsername = false;
+    }
+  }
 </script>
 
 <div class="password-settings">
   <div class="settings-header">
-    <h2>Ubah Password</h2>
-    <p class="subtitle">Perbarui password Anda untuk keamanan akun yang lebih baik</p>
+    <h2>Pengaturan Akun</h2>
+    <p class="subtitle">Kelola username dan password Anda</p>
   </div>
+
+  <!-- Username Change Section -->
+  <div class="settings-section">
+    <h3 class="section-title">Ubah Username</h3>
+    <form on:submit={handleUsernameSubmit} class="username-form">
+      <div class="form-group">
+        <label for="username">Username Baru</label>
+        <input
+          type="text"
+          id="username"
+          bind:value={newUsername}
+          placeholder="Masukkan username baru"
+          required
+          disabled={loadingUsername}
+          autocomplete="username"
+          minlength="3"
+          maxlength="50"
+          pattern="[a-zA-Z0-9_]+"
+        />
+        <p class="form-hint">Username harus 3-50 karakter dan hanya boleh huruf, angka, dan underscore (_)</p>
+      </div>
+      <button type="submit" class="btn-submit" disabled={loadingUsername || !validateUsername() || newUsername === currentUsername}>
+        {loadingUsername ? 'Memproses...' : 'Perbarui Username'}
+      </button>
+    </form>
+  </div>
+
+  <!-- Password Change Section -->
+  <div class="settings-section">
+    <h3 class="section-title">Ubah Password</h3>
 
   <form on:submit={handleSubmit} class="password-form">
     <div class="form-group">
@@ -289,11 +408,10 @@
       {loading ? 'Memproses...' : 'Perbarui Password'}
     </button>
   </form>
+  </div>
 </div>
 
-{#if showToast}
-  <Toast message={toastMessage} type={toastType} on:close={() => showToast = false} />
-{/if}
+<Toast message={toastMessage} type={toastType} visible={showToast} on:close={() => showToast = false} />
 
 <style>
   .password-settings {
@@ -307,6 +425,36 @@
 
   .settings-header {
     margin-bottom: 2.5rem;
+  }
+
+  .settings-section {
+    margin-bottom: 3rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .settings-section:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 1.5rem;
+  }
+
+  .username-form {
+    margin-top: 1.5rem;
+  }
+
+  .form-hint {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    line-height: 1.5;
   }
 
   .settings-header h2 {

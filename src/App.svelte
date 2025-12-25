@@ -871,6 +871,8 @@
   .app-container {
     min-height: 100vh;
     background-color: var(--color-bg);
+    width: 100%;
+    overflow-x: hidden;
   }
 
   .navbar {
@@ -964,6 +966,11 @@
     }
     .mobile-menu-btn {
       display: block;
+    }
+    
+    .logo-icon {
+      width: 150px;
+      max-width: 100%;
     }
   }
 
@@ -1508,6 +1515,28 @@
     }
     .pricing-card {
       max-width: 100%;
+    }
+    
+    /* Footer mobile fixes */
+    .footer {
+      padding: 3rem 0 1.5rem;
+    }
+    
+    .footer-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .footer-brand {
+      max-width: 100%;
+    }
+    
+    .footer-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+      text-align: left;
     }
   }
 

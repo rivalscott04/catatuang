@@ -25,6 +25,7 @@ Route::prefix('admin')->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
         Route::put('/password', [AdminAuthController::class, 'updatePassword']);
+        Route::put('/username', [AdminAuthController::class, 'updateUsername']);
         
         // Dashboard API
         Route::get('/stats', [AdminDashboardController::class, 'stats']);

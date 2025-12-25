@@ -250,4 +250,36 @@ class User extends Model
 
         return $days >= 0 ? $days : 0;
     }
+
+    /**
+     * Check if user can generate PDF report
+     * Only Pro and VIP plans can generate PDF reports
+     */
+    public function canGenerateReport(): array
+    {
+        // Check subscription active
+        if (!$this->isSubscriptionActive()) {
+            return [
+                'allowed' => false,
+                'reason' => 'subscription_expired',
+                'message' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk menggunakan fitur ini.',
+            ];
+        }
+
+        // Check plan: must be pro or vip
+        if (!in_array($this->plan, ['pro', 'vip'])) {
+            return [
+                'allowed' => false,
+                'reason' => 'plan_not_supported',
+                'message' => 'Fitur PDF report hanya tersedia untuk plan Pro dan VIP. Upgrade plan Anda untuk mengakses fitur ini.',
+                'current_plan' => $this->plan,
+                'required_plans' => ['pro', 'vip'],
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'plan' => $this->plan,
+        ];
+    }
 }

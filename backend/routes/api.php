@@ -5,6 +5,8 @@ use App\Http\Controllers\Internal\UserController;
 use App\Http\Controllers\Internal\TransactionController;
 use App\Http\Controllers\Internal\SummaryController;
 use App\Http\Controllers\Internal\SubscriptionController;
+use App\Http\Controllers\Internal\ReportController;
+use App\Http\Controllers\Internal\UploadController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,5 +37,13 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     // Transaction endpoints (prepared for next step)
     Route::post('/transactions/batch', [TransactionController::class, 'batch']);
     Route::get('/summary/today', [SummaryController::class, 'today']);
+    
+    // Report endpoints
+    Route::post('/reports/pdf-expense-monthly', [ReportController::class, 'generateExpenseMonthlyPdf']);
+    
+    // Upload endpoints
+    Route::post('/uploads/create', [UploadController::class, 'create']);
+    Route::post('/uploads/confirm', [UploadController::class, 'confirm']);
+    Route::get('/uploads/pending', [UploadController::class, 'getPending']);
 });
 
