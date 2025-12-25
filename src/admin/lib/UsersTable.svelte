@@ -109,13 +109,6 @@
     fetchUsers();
   }
 
-  function getSortIcon(field) {
-    if (sortField !== field) {
-      return '↕️';
-    }
-    return sortDirection === 'asc' ? '↑' : '↓';
-  }
-
   function formatPhoneNumber(phone) {
     if (!phone) return '-';
     // Remove leading 0 or 62
@@ -150,7 +143,7 @@
     const created = new Date(createdAt);
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff < 7;
+    return daysDiff < 3;
   }
 
   function getCombinedStatus(user) {
@@ -229,6 +222,13 @@
     showModal = false;
     selectedUser = null;
     newPlan = '';
+  }
+
+  function handleActionClick(user) {
+    // Action menu handler - bisa ditambahkan dropdown menu atau action lainnya
+    console.log('Action clicked for user:', user);
+    // Untuk sekarang, buka edit modal sebagai default action
+    openEditModal(user);
   }
 
   async function handleSavePlan(event) {
@@ -399,16 +399,16 @@
         <thead>
           <tr>
             <th class="sortable" on:click={() => handleSort('id')}>
-              ID {getSortIcon('id')}
+              ID
             </th>
             <th class="sortable" on:click={() => handleSort('name')}>
-              Nama {getSortIcon('name')}
+              Nama
             </th>
             <th>Phone</th>
             <th>Plan</th>
             <th>Status</th>
             <th class="sortable" on:click={() => handleSort('expires_at')}>
-              Expires At {getSortIcon('expires_at')}
+              Expires At
             </th>
             <th>Actions</th>
           </tr>
@@ -424,7 +424,7 @@
                 <div class="name-cell">
                   {user.name || '-'}
                   {#if isNew}
-                    <span class="badge-new" title="User baru (kurang dari 7 hari)">New</span>
+                    <span class="badge-new" title="User baru (kurang dari 3 hari)">New</span>
                   {/if}
                 </div>
               </td>
@@ -481,6 +481,7 @@
                   <button 
                     class="btn-action-menu" 
                     title="More actions"
+                    on:click={() => handleActionClick(user)}
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
@@ -516,6 +517,7 @@
             <button 
               class="btn-action-menu-mobile" 
               title="More actions"
+              on:click={() => handleActionClick(user)}
             >
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
