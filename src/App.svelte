@@ -68,16 +68,23 @@
         if (response.ok) {
           const data = await response.json();
           console.log("Pricing API response:", data);
+          console.log("Response data type:", typeof data.data, "Is array:", Array.isArray(data.data));
           
-          if (data.success && data.data && Array.isArray(data.data)) {
-            // Ensure features is always an array
-            pricings = data.data.map(p => ({
-              ...p,
-              features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
-            }));
-            console.log("Pricing data loaded:", pricings);
+          if (data.success) {
+            if (data.data && Array.isArray(data.data)) {
+              // Ensure features is always an array
+              pricings = data.data.map(p => ({
+                ...p,
+                features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
+              }));
+              console.log("Pricing data loaded:", pricings);
+              console.log("Number of pricings:", pricings.length);
+            } else {
+              console.warn("Pricing data is not an array:", data.data);
+              pricings = [];
+            }
           } else {
-            console.error("Failed to load pricing - invalid response:", data);
+            console.error("API returned success=false:", data);
             pricings = [];
           }
         } else {
