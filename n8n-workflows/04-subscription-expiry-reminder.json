@@ -31,8 +31,7 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.BACKEND_URL }}/api/internal/subscriptions/expiring-soon?days=2",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -89,6 +88,16 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.GOWA_URL }}/api/send",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

@@ -29,8 +29,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/users/check-or-create",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -171,8 +170,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/users/reminder",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -211,8 +209,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/users/reminder",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -251,8 +248,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/users/style",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -301,8 +297,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/reports/pdf-expense-monthly",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -395,8 +390,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.GOWA_URL }}/api/send",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -426,8 +420,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/create",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -481,8 +474,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -526,8 +518,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -602,8 +593,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.GOWA_URL }}/api/send",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

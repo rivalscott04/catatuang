@@ -23,8 +23,7 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.BACKEND_URL }}/api/internal/reminders/today-empty",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -88,8 +87,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.GOWA_URL }}/api/send",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
