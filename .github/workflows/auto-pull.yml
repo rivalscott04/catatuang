@@ -25,6 +25,13 @@ jobs:
             echo "Nyambung ke server... lanjut git pull ya!"
             cd /var/www/catatuang || exit 1
             
+            # Backup .env.prod jika ada (biar ga kehapus pas reset)
+            ENV_PROD_BACKUP=""
+            if [ -f ".env.prod" ]; then
+              ENV_PROD_BACKUP=$(cat .env.prod)
+              echo "Backup .env.prod berhasil (file akan di-restore setelah reset)"
+            fi
+            
             # Fetch dulu untuk update remote refs
             echo "Fetching latest changes dari remote..."
             git fetch origin master
@@ -34,6 +41,13 @@ jobs:
               echo "Ada perubahan lokal yang konflik, reset ke origin/master..."
               git reset --hard origin/master
               git clean -fd
+              
+              # Restore .env.prod jika sebelumnya ada
+              if [ -n "$ENV_PROD_BACKUP" ]; then
+                echo "$ENV_PROD_BACKUP" > .env.prod
+                echo ".env.prod berhasil di-restore setelah reset"
+              fi
+              
               echo "Local changes udah di-reset, sekarang pull..."
             fi
             
@@ -42,6 +56,12 @@ jobs:
               echo "Pull masih gagal, force reset ke origin/master..."
               git reset --hard origin/master
               git clean -fd
+              
+              # Restore .env.prod jika sebelumnya ada
+              if [ -n "$ENV_PROD_BACKUP" ]; then
+                echo "$ENV_PROD_BACKUP" > .env.prod
+                echo ".env.prod berhasil di-restore setelah force reset"
+              fi
             }
             echo "Kode terbaru udah ditarik!"
             
