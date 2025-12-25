@@ -14,7 +14,25 @@ class AdminPricingController extends Controller
      */
     public function index()
     {
-        $pricings = Pricing::orderBy('plan')->get();
+        $pricings = Pricing::orderBy('plan')->get()->map(function ($pricing) {
+            // Ensure features is an array
+            $features = $pricing->features;
+            if (is_string($features)) {
+                $features = json_decode($features, true) ?? [];
+            }
+            if (!is_array($features)) {
+                $features = [];
+            }
+            
+            return [
+                'id' => $pricing->id,
+                'plan' => $pricing->plan,
+                'price' => $pricing->price,
+                'description' => $pricing->description,
+                'features' => $features,
+                'is_active' => $pricing->is_active,
+            ];
+        });
 
         return response()->json([
             'success' => true,

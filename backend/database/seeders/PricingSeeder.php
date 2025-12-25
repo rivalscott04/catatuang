@@ -18,38 +18,38 @@ class PricingSeeder extends Seeder
                 'price' => 0,
                 'is_active' => true,
                 'description' => 'Coba semua fitur utama sebelum berlangganan.',
-                'features' => json_encode([
+                'features' => [
                     'Aktif 3 hari',
                     '10 chat text /bulan',
                     'Upload struk (1/bulan)',
                     'Semua fitur Pro aktif',
-                ]),
+                ],
             ],
             [
                 'plan' => 'pro',
                 'price' => 29000,
                 'is_active' => true,
                 'description' => 'Fitur lebih lengkap untuk analisis mendalam.',
-                'features' => json_encode([
+                'features' => [
                     '200 chat text /bulan',
                     'Upload struk otomatis (50/bulan)',
                     'OCR struk otomatis',
                     'Ringkasan & laporan bulanan',
                     'Export PDF & Excel',
-                ]),
+                ],
             ],
             [
                 'plan' => 'vip',
                 'price' => 79000,
                 'is_active' => true,
                 'description' => 'Untuk power user atau bisnis.',
-                'features' => json_encode([
+                'features' => [
                     'Semua fitur Pro',
                     'Unlimited chat text',
                     'Upload struk 200/bulan',
                     'Priority OCR processing',
                     'Priority Support',
-                ]),
+                ],
             ],
         ];
 

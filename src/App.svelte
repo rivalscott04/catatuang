@@ -59,20 +59,35 @@
         const response = await fetch("/api/pricing", {
           method: "GET",
           credentials: "include",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+          },
         });
+        
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data) {
-            pricings = data.data;
+          console.log("Pricing API response:", data);
+          
+          if (data.success && data.data && Array.isArray(data.data)) {
+            // Ensure features is always an array
+            pricings = data.data.map(p => ({
+              ...p,
+              features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
+            }));
             console.log("Pricing data loaded:", pricings);
           } else {
-            console.error("Failed to load pricing:", data);
+            console.error("Failed to load pricing - invalid response:", data);
+            pricings = [];
           }
         } else {
-          console.error("Failed to fetch pricing, status:", response.status);
+          const errorText = await response.text();
+          console.error("Failed to fetch pricing, status:", response.status, errorText);
+          pricings = [];
         }
       } catch (err) {
         console.error("Failed to fetch pricing:", err);
+        pricings = [];
       } finally {
         pricingLoading = false;
       }

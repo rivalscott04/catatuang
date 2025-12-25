@@ -34,8 +34,12 @@
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          pricings = data.data;
+        if (data.success && data.data) {
+          // Ensure features is always an array
+          pricings = data.data.map(p => ({
+            ...p,
+            features: Array.isArray(p.features) ? p.features : (p.features ? [p.features] : [])
+          }));
         }
       }
     } catch (error) {
@@ -168,7 +172,7 @@
                 id="features-{pricing.id}"
                 class="features-textarea"
                 placeholder="Masukkan fitur, satu per baris&#10;Contoh:&#10;200 chat text /bulan&#10;Upload struk otomatis (50/bulan)"
-                value={pricing.features ? pricing.features.join('\n') : ''}
+                value={Array.isArray(pricing.features) ? pricing.features.join('\n') : ''}
                 on:input={(e) => {
                   const target = e.currentTarget;
                   const text = target.value;
