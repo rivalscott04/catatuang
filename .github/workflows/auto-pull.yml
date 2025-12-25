@@ -24,7 +24,25 @@ jobs:
           ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" <<'EOF'
             echo "Nyambung ke server... lanjut git pull ya!"
             cd /var/www/catatuang || exit 1
-            git pull
+            
+            # Fetch dulu untuk update remote refs
+            echo "Fetching latest changes dari remote..."
+            git fetch origin master
+            
+            # Cek apakah ada perubahan lokal yang konflik
+            if ! git diff --quiet HEAD origin/master || ! git diff --cached --quiet; then
+              echo "Ada perubahan lokal yang konflik, reset ke origin/master..."
+              git reset --hard origin/master
+              git clean -fd
+              echo "Local changes udah di-reset, sekarang pull..."
+            fi
+            
+            # Pull perubahan terbaru
+            git pull origin master || {
+              echo "Pull masih gagal, force reset ke origin/master..."
+              git reset --hard origin/master
+              git clean -fd
+            }
             echo "Kode terbaru udah ditarik!"
             
             echo "Install dependencies Svelte dulu..."
