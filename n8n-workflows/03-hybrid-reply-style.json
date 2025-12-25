@@ -28,14 +28,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/users/check-or-create",
+        "url": "https://api.catatuang.click/api/internal/users/check-or-create",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -102,7 +102,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.AI_API_URL }}",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -113,11 +113,11 @@
             },
             {
               "name": "Authorization",
-              "value": "={{ `Bearer ${$env.OPENROUTER_API_KEY}` }}"
+              "value": "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"
             },
             {
               "name": "HTTP-Referer",
-              "value": "={{ $env.N8N_WEBHOOK_URL || 'https://n8n.yourdomain.com' }}"
+              "value": "https://n8n-gtjrkps309av.timah.sumopod.my.id"
             },
             {
               "name": "X-Title",
@@ -174,7 +174,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.GOWA_URL }}/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {

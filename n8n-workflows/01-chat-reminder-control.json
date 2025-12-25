@@ -28,14 +28,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/users/check-or-create",
+        "url": "https://api.catatuang.click/api/internal/users/check-or-create",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -169,14 +169,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/users/reminder",
+        "url": "https://api.catatuang.click/api/internal/users/reminder",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -208,14 +208,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/users/reminder",
+        "url": "https://api.catatuang.click/api/internal/users/reminder",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -247,14 +247,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/users/style",
+        "url": "https://api.catatuang.click/api/internal/users/style",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -296,14 +296,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/reports/pdf-expense-monthly",
+        "url": "https://api.catatuang.click/api/internal/reports/pdf-expense-monthly",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -389,7 +389,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.GOWA_URL }}/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -419,14 +419,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/create",
+        "url": "https://api.catatuang.click/api/internal/uploads/create",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -473,14 +473,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
+        "url": "https://api.catatuang.click/api/internal/uploads/confirm",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -517,14 +517,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BACKEND_URL }}/api/internal/uploads/confirm",
+        "url": "https://api.catatuang.click/api/internal/uploads/confirm",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "={{ $env.INTERNAL_API_KEY }}"
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
             },
             {
               "name": "Content-Type",
@@ -592,7 +592,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.GOWA_URL }}/api/send",
+        "url": "https://gowa-dsidfoh89ayl.sgp-irawan.sumopod.my.id/api/send",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
