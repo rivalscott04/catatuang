@@ -134,16 +134,43 @@
     fetchPricing();
 
     // Listen for pricing updates from admin panel
-    const handlePricingUpdate = () => {
-      console.log('Pricing updated event received, refreshing data...');
+    const handlePricingUpdate = (event) => {
+      console.log('Pricing updated event received, refreshing data...', event);
       fetchPricing();
     };
     
+    // Listen for custom event
     window.addEventListener('pricing-updated', handlePricingUpdate);
+    
+    // Also listen for localStorage event (works across tabs/windows)
+    const handleStorageUpdate = (e) => {
+      if (e.key === 'pricing-updated') {
+        console.log('Pricing updated via localStorage, refreshing data...');
+        fetchPricing();
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    
+    // Also check localStorage on focus (in case same tab)
+    const handleFocus = () => {
+      const lastUpdate = localStorage.getItem('pricing-updated');
+      if (lastUpdate) {
+        const updateTime = parseInt(lastUpdate);
+        const now = Date.now();
+        // If updated within last 5 seconds, refresh
+        if (now - updateTime < 5000) {
+          console.log('Pricing was recently updated, refreshing data...');
+          fetchPricing();
+        }
+      }
+    };
+    window.addEventListener('focus', handleFocus);
     
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener('pricing-updated', handlePricingUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('focus', handleFocus);
     };
   });
 
@@ -178,12 +205,38 @@
   }
 
   function getPlanName(plan) {
-    const plans = {
-      free: "Trial 3 Hari (Gratis)",
-      pro: "Pro (Rp 29rb/bulan)",
-      vip: "VIP (Rp 79rb/bulan)",
+    const pricing = getPricingByPlan(plan);
+    if (!pricing) {
+      // Fallback jika data belum ter-load
+      const fallback = {
+        free: "Trial 3 Hari (Gratis)",
+        pro: "Pro",
+        vip: "VIP",
+      };
+      return fallback[plan] || fallback.free;
+    }
+    
+    if (plan === 'free') {
+      return "Trial 3 Hari (Gratis)";
+    }
+    
+    const priceText = formatPrice(pricing.price);
+    return `${pricing.plan.toUpperCase()} (Rp ${priceText}/bulan)`;
+  }
+
+  function getPlanDescription(plan) {
+    const pricing = getPricingByPlan(plan);
+    if (pricing && pricing.description) {
+      return pricing.description;
+    }
+    
+    // Fallback jika data belum ter-load
+    const fallback = {
+      free: "Mulai dengan trial gratis 3 hari, upgrade kapan saja",
+      pro: "Paket Pro dengan fitur lengkap untuk analisis mendalam",
+      vip: "Paket VIP dengan prioritas dan fitur premium",
     };
-    return plans[plan] || plans.free;
+    return fallback[plan] || fallback.free;
   }
 
   function formatPrice(price) {
@@ -727,13 +780,7 @@
                   {getPlanName(selectedPlan)}
                 </div>
                 <p class="form-hint">
-                  {#if selectedPlan === "free"}
-                    Mulai dengan trial gratis 3 hari, upgrade kapan saja
-                  {:else if selectedPlan === "pro"}
-                    Paket Pro dengan fitur lengkap untuk analisis mendalam
-                  {:else if selectedPlan === "vip"}
-                    Paket VIP dengan prioritas dan fitur premium
-                  {/if}
+                  {getPlanDescription(selectedPlan)}
                 </p>
               </div>
             {:else}
@@ -744,18 +791,23 @@
                 class="form-input plan-select"
                 disabled={loading}
               >
-                <option value="free">Trial 3 Hari (Gratis)</option>
-                <option value="pro">Pro (Rp 29rb/bulan)</option>
-                <option value="vip">VIP (Rp 79rb/bulan)</option>
+                {#each pricings as pricing}
+                  <option value={pricing.plan}>
+                    {#if pricing.plan === 'free'}
+                      Trial 3 Hari (Gratis)
+                    {:else}
+                      {pricing.plan.toUpperCase()} (Rp {formatPrice(pricing.price)}/bulan)
+                    {/if}
+                  </option>
+                {/each}
+                {#if pricings.length === 0}
+                  <option value="free">Trial 3 Hari (Gratis)</option>
+                  <option value="pro">Pro</option>
+                  <option value="vip">VIP</option>
+                {/if}
               </select>
               <p class="form-hint">
-                {#if selectedPlan === "free"}
-                  Mulai dengan trial gratis 3 hari, upgrade kapan saja
-                {:else if selectedPlan === "pro"}
-                  Paket Pro dengan fitur lengkap untuk analisis mendalam
-                {:else if selectedPlan === "vip"}
-                  Paket VIP dengan prioritas dan fitur premium
-                {/if}
+                {getPlanDescription(selectedPlan)}
               </p>
             {/if}
           </div>

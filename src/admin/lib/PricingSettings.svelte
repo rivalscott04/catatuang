@@ -82,10 +82,21 @@
           pricings[index] = { ...pricings[index], ...data.data };
         }
         dispatch('updated');
+        
+        // Show toast
         showToastMessage('Perubahan berhasil disimpan!', 'success');
+        console.log('Toast should be shown now');
         
         // Trigger refresh di halaman utama dengan custom event
-        window.dispatchEvent(new CustomEvent('pricing-updated'));
+        const event = new CustomEvent('pricing-updated', { 
+          detail: { pricingId: pricing.id, plan: pricing.plan },
+          bubbles: true 
+        });
+        window.dispatchEvent(event);
+        console.log('Pricing updated event dispatched');
+        
+        // Also try localStorage event as fallback (works across tabs)
+        localStorage.setItem('pricing-updated', Date.now().toString());
       } else {
         showToastMessage(data.message || 'Gagal mengupdate harga', 'error');
       }
@@ -106,9 +117,18 @@
   }
 
   function showToastMessage(message, type = 'success') {
-    toastMessage = message;
-    toastType = type;
-    showToast = true;
+    // Reset toast first to ensure it shows
+    showToast = false;
+    toastMessage = '';
+    toastType = 'success';
+    
+    // Use setTimeout to ensure reactivity
+    setTimeout(() => {
+      toastMessage = message;
+      toastType = type;
+      showToast = true;
+      console.log('showToastMessage called:', { message, type, showToast });
+    }, 10);
   }
 
   onMount(() => {
@@ -204,7 +224,7 @@
   {/if}
 </div>
 
-<Toast message={toastMessage} type={toastType} visible={showToast} on:close={() => showToast = false} />
+<Toast message={toastMessage} type={toastType} bind:visible={showToast} on:close={() => showToast = false} />
 
 <style>
   .pricing-settings {
