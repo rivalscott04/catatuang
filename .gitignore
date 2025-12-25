@@ -40,3 +40,7 @@ n8n-workflows/
 # OS
 .DS_Store
 Thumbs.db
+
+# Markdown files (kecuali README.md di root)
+*.md
+!/README.md
