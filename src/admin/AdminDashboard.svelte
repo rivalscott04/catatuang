@@ -122,10 +122,15 @@
       
       <div class="nav-actions">
         <div class="admin-info">
-          <span class="admin-name">{admin?.name || admin?.username}</span>
+          <span class="admin-name desktop-only">{admin?.name || admin?.username}</span>
         </div>
         <button class="btn-logout" on:click={handleLogout}>
-          Logout
+          <span class="logout-text">Logout</span>
+          <svg class="logout-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
         </button>
       </div>
     </div>
@@ -435,6 +440,11 @@
     font-weight: 600;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     letter-spacing: 0.01em;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .btn-logout:hover {
@@ -445,6 +455,14 @@
 
   .btn-logout:active {
     transform: translateY(0);
+  }
+
+  .logout-icon {
+    display: none;
+  }
+
+  .desktop-only {
+    display: block;
   }
 
   .dashboard-content {
@@ -858,15 +876,59 @@
     }
 
     .nav-content {
-      padding: 0 1rem;
+      padding: 0 0.75rem;
+      gap: 0.5rem;
+    }
+
+    .nav-brand {
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .logo-img {
+      height: 28px;
     }
 
     .brand-text {
-      font-size: 1.125rem;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-actions {
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .admin-info {
+      display: none;
+    }
+
+    .btn-logout {
+      padding: 0.5rem;
+      min-width: 40px;
+    }
+
+    .logout-text {
+      display: none;
+    }
+
+    .logout-icon {
+      display: block;
     }
   }
 
   @media (max-width: 480px) {
+    .nav-content {
+      padding: 0 0.5rem;
+    }
+
+    .brand-text {
+      font-size: 0.75rem;
+    }
+
     .main-content {
       padding: 1.25rem;
     }
