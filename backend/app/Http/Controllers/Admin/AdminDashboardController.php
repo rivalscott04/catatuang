@@ -256,5 +256,28 @@ class AdminDashboardController extends Controller
             'data' => $user,
         ]);
     }
+
+    /**
+     * Delete user
+     */
+    public function deleteUser($id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        // Delete user (this will cascade delete related records if foreign keys are set up)
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User berhasil dihapus',
+        ]);
+    }
 }
 

@@ -24,6 +24,9 @@
   let showModal = false;
   let selectedUser = null;
   let activeFilterChips = [];
+  let showDeleteModal = false;
+  let userToDelete = null;
+  let deleting = false;
 
   async function fetchUsers() {
     loading = true;
@@ -231,6 +234,55 @@
     openEditModal(user);
   }
 
+  function openDeleteModal(user) {
+    userToDelete = user;
+    showDeleteModal = true;
+  }
+
+  function closeDeleteModal() {
+    showDeleteModal = false;
+    userToDelete = null;
+  }
+
+  async function handleDeleteUser() {
+    if (!userToDelete) return;
+    
+    deleting = true;
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      const response = await apiFetch(`/admin/users/${userToDelete.id}`, {
+        method: 'DELETE',
+        headers: headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          showToastMessage('User berhasil dihapus', 'success');
+          closeDeleteModal();
+          await fetchUsers();
+        }
+      } else {
+        const error = await response.json();
+        showToastMessage(error.message || 'Gagal menghapus user', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      showToastMessage('Gagal menghapus user', 'error');
+    } finally {
+      deleting = false;
+    }
+  }
+
   async function handleSavePlan(event) {
     const { plan } = event.detail;
     if (!plan || !selectedUser) return;
@@ -398,8 +450,8 @@
       <table class="users-table">
         <thead>
           <tr>
-            <th class="sortable" on:click={() => handleSort('id')}>
-              ID
+            <th>
+              No
             </th>
             <th class="sortable" on:click={() => handleSort('name')}>
               Nama
@@ -414,12 +466,13 @@
           </tr>
         </thead>
         <tbody>
-          {#each users as user}
+          {#each users as user, index}
             {@const expiryInfo = formatExpiryDate(user.subscription_expires_at)}
             {@const statusInfo = getCombinedStatus(user)}
             {@const isNew = isNewUser(user.created_at)}
+            {@const rowNumber = (currentPage - 1) * 15 + index + 1}
             <tr class:editing={editingUser === user.id}>
-              <td>{user.id}</td>
+              <td>{rowNumber}</td>
               <td>
                 <div class="name-cell">
                   {user.name || '-'}
@@ -479,14 +532,21 @@
               <td>
                 <div class="action-buttons">
                   <button 
-                    class="btn-action-menu" 
-                    title="More actions"
-                    on:click={() => handleActionClick(user)}
+                    class="btn-action btn-action-edit" 
+                    title="Edit Plan"
+                    on:click={() => openEditModal(user)}
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
-                      <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
-                      <circle cx="8" cy="13" r="1.5" fill="currentColor"/>
+                      <path d="M11.333 1.333a2.667 2.667 0 013.334 3.334L5.333 13.333l-4 1.334 1.334-4L11.333 1.333z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button 
+                    class="btn-action btn-action-delete" 
+                    title="Hapus User"
+                    on:click={() => openDeleteModal(user)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h10.667zM6.667 7.333v4M9.333 7.333v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
                 </div>
@@ -512,19 +572,27 @@
                   <span class="badge-new">New</span>
                 {/if}
               </h3>
-              <p class="card-id">ID: {user.id}</p>
             </div>
-            <button 
-              class="btn-action-menu-mobile" 
-              title="More actions"
-              on:click={() => handleActionClick(user)}
-            >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
-                <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
-                <circle cx="8" cy="13" r="1.5" fill="currentColor"/>
-              </svg>
-            </button>
+            <div class="card-actions-mobile">
+              <button 
+                class="btn-action-mobile btn-action-edit" 
+                title="Edit Plan"
+                on:click={() => openEditModal(user)}
+              >
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <path d="M11.333 1.333a2.667 2.667 0 013.334 3.334L5.333 13.333l-4 1.334 1.334-4L11.333 1.333z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button 
+                class="btn-action-mobile btn-action-delete" 
+                title="Hapus User"
+                on:click={() => openDeleteModal(user)}
+              >
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h10.667zM6.667 7.333v4M9.333 7.333v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
           
           <div class="card-body">
@@ -642,6 +710,80 @@
 />
 
 <Toast bind:visible={showToast} message={toastMessage} type={toastType} />
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <div 
+    class="modal-overlay" 
+    role="dialog" 
+    aria-modal="true"
+    aria-labelledby="delete-modal-title"
+    on:click={closeDeleteModal} 
+    on:keydown={(e) => e.key === "Escape" && closeDeleteModal()}
+    tabindex="-1"
+  >
+    <div 
+      class="delete-modal-content"
+      role="document"
+      on:click|stopPropagation
+    >
+      <div class="delete-modal-header">
+        <div class="delete-icon-wrapper">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 id="delete-modal-title" class="delete-modal-title">Hapus User</h2>
+        <p class="delete-modal-subtitle">
+          Apakah Anda yakin ingin menghapus user <strong>{userToDelete?.name || '-'}</strong>?
+        </p>
+        <p class="delete-modal-warning">
+          Tindakan ini tidak dapat dibatalkan. Semua data user akan dihapus secara permanen.
+        </p>
+      </div>
+
+      <div class="delete-modal-body">
+        <div class="delete-user-info">
+          <div class="info-row">
+            <span class="info-label">Nama:</span>
+            <span class="info-value">{userToDelete?.name || '-'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Phone:</span>
+            <span class="info-value">{userToDelete?.phone_number ? formatPhoneNumber(userToDelete.phone_number) : '-'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Plan:</span>
+            <span class="info-value">
+              <span class="badge {getPlanBadgeClass(userToDelete?.plan)}">
+                {userToDelete?.plan?.toUpperCase() || '-'}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="delete-modal-footer">
+        <button 
+          class="btn-cancel" 
+          on:click={closeDeleteModal}
+          disabled={deleting}
+        >
+          Batal
+        </button>
+        <button 
+          class="btn-delete" 
+          on:click={handleDeleteUser}
+          disabled={deleting}
+        >
+          {deleting ? 'Menghapus...' : 'Hapus User'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .users-table-container {
@@ -994,6 +1136,32 @@
     align-items: center;
   }
 
+  .btn-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: #64748b;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .btn-action:hover {
+    background: #f1f5f9;
+  }
+
+  .btn-action-edit:hover {
+    color: var(--color-primary, #10b981);
+  }
+
+  .btn-action-delete:hover {
+    color: #ef4444;
+    background: #fef2f2;
+  }
+
   .btn-action-menu {
     background: none;
     border: none;
@@ -1010,6 +1178,38 @@
   .btn-action-menu:hover {
     background: #f1f5f9;
     color: #1e293b;
+  }
+
+  .card-actions-mobile {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .btn-action-mobile {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: #64748b;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .btn-action-mobile:hover {
+    background: #f1f5f9;
+  }
+
+  .btn-action-mobile.btn-action-edit:hover {
+    color: var(--color-primary, #10b981);
+  }
+
+  .btn-action-mobile.btn-action-delete:hover {
+    color: #ef4444;
+    background: #fef2f2;
   }
 
   .empty-state {
@@ -1273,6 +1473,216 @@
     /* Show desktop table on desktop */
     .desktop-view {
       display: block;
+    }
+  }
+
+  /* Delete Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .delete-modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .delete-modal-header {
+    padding: 2rem 2rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .delete-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    background: #fef2f2;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ef4444;
+  }
+
+  .delete-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-heading, #0f172a);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .delete-modal-subtitle {
+    color: var(--color-text-body, #475569);
+    font-size: 0.95rem;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.5;
+  }
+
+  .delete-modal-subtitle strong {
+    color: var(--color-text-heading, #0f172a);
+    font-weight: 600;
+  }
+
+  .delete-modal-warning {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .delete-modal-body {
+    padding: 1.5rem 2rem;
+  }
+
+  .delete-user-info {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-muted, #64748b);
+    min-width: 80px;
+  }
+
+  .info-value {
+    font-size: 0.875rem;
+    color: var(--color-text-heading, #0f172a);
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .delete-modal-footer {
+    padding: 1.5rem 2rem 2rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  .btn-cancel {
+    padding: 0.75rem 1.5rem;
+    background: #fff;
+    color: var(--color-text-body, #475569);
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: var(--color-text-heading, #0f172a);
+  }
+
+  .btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-delete {
+    padding: 0.75rem 1.5rem;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-delete:hover:not(:disabled) {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (max-width: 640px) {
+    .delete-modal-content {
+      max-width: 100%;
+    }
+
+    .delete-modal-header {
+      padding: 1.5rem 1.5rem 1rem;
+    }
+
+    .delete-modal-body {
+      padding: 1rem 1.5rem;
+    }
+
+    .delete-modal-footer {
+      padding: 1rem 1.5rem 1.5rem;
+      flex-direction: column;
+    }
+
+    .btn-cancel,
+    .btn-delete {
+      width: 100%;
+    }
+
+    .delete-modal-title {
+      font-size: 1.25rem;
     }
   }
 </style>
