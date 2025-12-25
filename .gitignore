@@ -44,3 +44,8 @@ Thumbs.db
 # Markdown files (kecuali README.md di root)
 *.md
 !/README.md
+DOCKER_SETUP.md
+Dockerfile
+QUICK_START_DOCKER.md
+docs/GOWA_CONTRACT.md
+n8n-workflows/README.md
