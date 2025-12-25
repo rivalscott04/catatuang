@@ -120,7 +120,7 @@
       "typeVersion": 4.2,
       "position": [1450, 300],
       "notes": "Send reminder message to user via GoWA"
-    },
+    }
   ],
   "connections": {
     "Cron (Daily 08:00)": {
