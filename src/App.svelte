@@ -2,9 +2,11 @@
   import Hero from "./lib/Hero.svelte";
   import Terms from "./lib/Terms.svelte";
   import Privacy from "./lib/Privacy.svelte";
+  import SuccessModal from "./lib/SuccessModal.svelte";
   import { onMount } from "svelte";
 
   let showRegisterModal = false;
+  let showSuccessModal = false;
   let phoneNumber = "";
   let name = "";
   let error = "";
@@ -12,6 +14,8 @@
   let selectedPlan = "free"; // free, pro, vip
   let isPlanLocked = false; // true jika plan sudah ditentukan dari tombol
   let currentPage = "home"; // home, syarat, privasi
+  let registeredPhone = "";
+  let botNumber = "6281234567890"; // Default, akan diambil dari API saat mount
 
   // Handle hash routing
   function handleHashChange() {
@@ -28,6 +32,24 @@
   onMount(() => {
     handleHashChange();
     window.addEventListener("hashchange", handleHashChange);
+    
+    // Fetch bot number from backend
+    (async () => {
+      try {
+        const response = await fetch("/api/bot-number", {
+          method: "GET",
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          botNumber = data.bot_number || "6281234567890";
+        }
+      } catch (err) {
+        console.error("Failed to fetch bot number:", err);
+        // Keep default value
+      }
+    })();
+    
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
     };
@@ -55,6 +77,12 @@
     error = "";
     selectedPlan = "free";
     isPlanLocked = false;
+  }
+
+  function closeSuccessModal() {
+    showSuccessModal = false;
+    document.body.style.overflow = "";
+    registeredPhone = "";
   }
 
   function getPlanName(plan) {
@@ -130,7 +158,13 @@
       const data = await response.json();
 
       if (response.ok) {
-        window.location.href = `/register/success?phone=${encodeURIComponent(cleanPhone)}`;
+        // Close register modal
+        closeRegisterModal();
+        
+        // Set registered phone and show success modal
+        registeredPhone = cleanPhone;
+        showSuccessModal = true;
+        document.body.style.overflow = "hidden";
       } else {
         // Handle validation errors
         if (data.errors) {
@@ -694,6 +728,8 @@
 
   <!-- Register Modal -->
   {#if showRegisterModal}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div 
       class="modal-overlay" 
       role="dialog" 
@@ -706,6 +742,7 @@
       <div 
         class="modal-content"
         role="document"
+        on:click|stopPropagation
       >
         <button class="modal-close" on:click={closeRegisterModal} aria-label="Tutup">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
@@ -820,6 +857,14 @@
       </div>
     </div>
   {/if}
+
+  <!-- Success Modal -->
+  <SuccessModal
+    isOpen={showSuccessModal}
+    phoneNumber={registeredPhone}
+    botNumber={botNumber}
+    onClose={closeSuccessModal}
+  />
 </div>
 
 <style>

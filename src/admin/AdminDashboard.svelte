@@ -3,6 +3,7 @@
   import StatsCard from './lib/StatsCard.svelte';
   import UsersTable from './lib/UsersTable.svelte';
   import PricingSettings from './lib/PricingSettings.svelte';
+  import PasswordSettings from './lib/PasswordSettings.svelte';
   import Svend3rBarChart from './lib/Svend3rBarChart.svelte';
   import Svend3rLineChart from './lib/Svend3rLineChart.svelte';
   import { apiFetch } from './lib/api.js';
@@ -13,7 +14,7 @@
 
   let stats = null;
   let loading = true;
-  let activeTab = 'dashboard'; // dashboard, users, pricing
+  let activeTab = 'dashboard'; // dashboard, users, pricing, password
   let refreshing = false;
   let sidebarOpen = false;
 
@@ -194,6 +195,21 @@
         </svg>
         Pricing
       </button>
+      
+      <button
+        class="sidebar-item"
+        class:active={activeTab === 'password'}
+        on:click={() => {
+          activeTab = 'password';
+          sidebarOpen = false;
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        Password
+      </button>
     </div>
 
     <main class="main-content">
@@ -343,6 +359,13 @@
             <h1>Pricing Settings</h1>
           </div>
           <PricingSettings on:updated={refreshData} />
+        </div>
+      {:else if activeTab === 'password'}
+        <div class="password-tab">
+          <div class="tab-header">
+            <h1>Password Settings</h1>
+          </div>
+          <PasswordSettings />
         </div>
       {/if}
     </main>

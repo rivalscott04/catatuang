@@ -11,11 +11,6 @@ const getApiBaseUrl = () => {
   // In production, use VITE_API_BASE_URL from .env.prod (injected at build time)
   const envApiUrl = import.meta.env.VITE_API_BASE_URL;
   
-  // Debug: log the API base URL (only in production, not in dev)
-  if (!import.meta.env.DEV) {
-    console.log('Production API Base URL:', envApiUrl || 'NOT SET - using fallback');
-  }
-  
   if (envApiUrl) {
     return envApiUrl;
   }
@@ -41,11 +36,6 @@ export const apiBaseUrl = getApiBaseUrl();
 
 export async function apiFetch(endpoint, options = {}) {
   const url = `${apiBaseUrl}${endpoint}`;
-  
-  // Debug logging in development
-  if (import.meta.env.DEV) {
-    console.log('API Request:', url, options);
-  }
   
   // Merge headers
   const headers = {

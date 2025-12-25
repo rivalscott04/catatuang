@@ -115,5 +115,90 @@ class AdminAuthController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Update admin password
+     */
+    public function updatePassword(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not authenticated',
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                function ($attribute, $value, $fail) {
+                    // Check for at least one capital letter
+                    if (!preg_match('/[A-Z]/', $value)) {
+                        $fail('Password harus mengandung minimal 1 huruf kapital.');
+                    }
+                    // Check for at least one symbol (common special characters)
+                    if (!preg_match('/[!@#$%^&*(),.?":{}|<>\[\]\\/_+\-=~`]/', $value)) {
+                        $fail('Password harus mengandung minimal 1 simbol.');
+                    }
+                    // Check for common weak passwords
+                    $weakPasswords = ['admin123', 'password123', 'admin', 'password', '12345678', 'qwerty123'];
+                    if (in_array(strtolower($value), array_map('strtolower', $weakPasswords))) {
+                        $fail('Password terlalu lemah. Gunakan password yang lebih kuat.');
+                    }
+                },
+            ],
+            'new_password_confirmation' => 'required|string|same:new_password',
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'new_password.required' => 'Password baru wajib diisi.',
+            'new_password.min' => 'Password minimal 8 karakter.',
+            'new_password_confirmation.required' => 'Konfirmasi password wajib diisi.',
+            'new_password_confirmation.same' => 'Konfirmasi password tidak cocok.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Verify current password
+        if (!password_verify($request->current_password, $admin->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password saat ini tidak benar.',
+                'errors' => [
+                    'current_password' => ['Password saat ini tidak benar.'],
+                ],
+            ], 422);
+        }
+
+        // Check if new password is same as current password
+        if (password_verify($request->new_password, $admin->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password baru harus berbeda dengan password saat ini.',
+                'errors' => [
+                    'new_password' => ['Password baru harus berbeda dengan password saat ini.'],
+                ],
+            ], 422);
+        }
+
+        // Update password
+        $admin->password = $request->new_password;
+        $admin->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diperbarui.',
+        ]);
+    }
 }
 

@@ -88,34 +88,26 @@ class AuthController extends Controller
         // Initialize subscription for new user
         $user->initializeSubscription($plan);
 
-        // Handle JSON requests
-        if ($request->expectsJson() || $request->wantsJson()) {
-            return response()->json([
-                'message' => 'Registrasi berhasil',
-                'phone' => $phoneNumber,
-            ], 201);
-        }
-
-        // Redirect to success page
-        return redirect()->route('register.success', ['phone' => $phoneNumber]);
+        // Return JSON response (frontend handles success display)
+        return response()->json([
+            'message' => 'Registrasi berhasil',
+            'phone' => $phoneNumber,
+        ], 201);
     }
 
     /**
-     * Show success page after registration
+     * Get WhatsApp bot number from environment
      */
-    public function showSuccess(Request $request)
+    public function getBotNumber()
     {
-        $phoneNumber = $request->query('phone');
-        
-        // Get bot WhatsApp number from env or config
-        $botNumber = env('WHATSAPP_BOT_NUMBER', '6281234567890'); // Default, should be in .env
+        // Get bot WhatsApp number from env
+        $botNumber = env('WHATSAPP_BOT_NUMBER', '6281234567890');
         
         // Format bot number for WhatsApp link (remove + and spaces)
         $botNumberFormatted = preg_replace('/[^0-9]/', '', $botNumber);
         
-        return view('auth.success', [
-            'phoneNumber' => $phoneNumber,
-            'botNumber' => $botNumberFormatted,
+        return response()->json([
+            'bot_number' => $botNumberFormatted,
         ]);
     }
 

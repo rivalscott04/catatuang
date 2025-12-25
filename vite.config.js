@@ -48,6 +48,15 @@ export default defineConfig(({ mode }) => {
           return acc
         }, {}),
     },
+    build: {
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true, // Hapus semua console.* saat production build
+          drop_debugger: true, // Hapus debugger statements
+        },
+      },
+    },
     server: {
       port: 5173,
       strictPort: false,

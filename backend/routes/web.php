@@ -13,17 +13,18 @@ Route::get('/csrf-token', function () {
 
 // Registration API routes
 Route::post('/register', [AuthController::class, 'register']);
-Route::get('/register/success', [AuthController::class, 'showSuccess'])->name('register.success');
+Route::get('/api/bot-number', [AuthController::class, 'getBotNumber']);
 
 // Admin API routes only (no views, frontend handles routing)
 Route::prefix('admin')->group(function () {
-    // Public admin API routes
-    Route::post('/login', [AdminAuthController::class, 'login']);
+    // Public admin API routes with rate limiting
+    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 
     // Protected admin API routes
     Route::middleware(['admin.auth'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::put('/password', [AdminAuthController::class, 'updatePassword']);
         
         // Dashboard API
         Route::get('/stats', [AdminDashboardController::class, 'stats']);
