@@ -78,6 +78,11 @@ class User extends Model
      */
     public function getChatLimit(): ?int
     {
+        // If user is unlimited, bypass all limits
+        if ($this->is_unlimited) {
+            return null;
+        }
+
         return match ($this->plan) {
             'free' => 10,
             'pro' => 200,
@@ -91,6 +96,11 @@ class User extends Model
      */
     public function getStrukLimit(): ?int
     {
+        // If user is unlimited, bypass all limits
+        if ($this->is_unlimited) {
+            return null;
+        }
+
         return match ($this->plan) {
             'free' => 1,
             'pro' => 50,
@@ -104,6 +114,11 @@ class User extends Model
      */
     public function canUseChat(): array
     {
+        // If user is unlimited, bypass all checks
+        if ($this->is_unlimited) {
+            return ['allowed' => true, 'remaining' => null, 'limit' => null, 'unlimited' => true];
+        }
+
         $this->resetMonthlyCountersIfNeeded();
         
         $limit = $this->getChatLimit();
@@ -136,6 +151,11 @@ class User extends Model
      */
     public function canUseStruk(): array
     {
+        // If user is unlimited, bypass all checks
+        if ($this->is_unlimited) {
+            return ['allowed' => true, 'remaining' => null, 'limit' => null, 'unlimited' => true];
+        }
+
         $this->resetMonthlyCountersIfNeeded();
         
         $limit = $this->getStrukLimit();
@@ -187,6 +207,16 @@ class User extends Model
     public function initializeSubscription(string $plan): void
     {
         $today = now();
+        
+        // If user is unlimited, set no expiry date
+        if ($this->is_unlimited) {
+            $this->update([
+                'subscription_started_at' => $today->toDateString(),
+                'subscription_expires_at' => null, // No expiry for unlimited users
+                'subscription_status' => 'active',
+            ]);
+            return;
+        }
         
         if ($plan === 'free') {
             // Free plan: 3 days trial

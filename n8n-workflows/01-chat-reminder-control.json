@@ -12,18 +12,24 @@
       "name": "Webhook (Incoming WA)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "webhookId": "wa-in"
     },
     {
       "parameters": {
-        "jsCode": "// Normalize payload from GoWA\nconst inputData = $json.body || $json || {};\nconst eventType = inputData.event || '';\n\n// Skip non-message events (ack, delivered, sent, dll)\nconst skipEvents = ['message.ack', 'ack', 'delivered', 'sent', 'message.delivered', 'message.sent', 'message.waiting', 'message.revoked'];\nif (skipEvents.includes(eventType)) {\n  return [{ json: { skip: true, reason: 'status_notification', event: eventType } }];\n}\n\n// Normalize phone ke format +62\nfunction normalizePhone(phone) {\n  if (!phone) return '';\n  phone = phone.toString().replace(/[^\\d+]/g, '');\n  if (phone.startsWith('+62')) return phone;\n  if (phone.startsWith('62')) return '+' + phone;\n  if (phone.startsWith('0')) return '+62' + phone.substring(1);\n  if (phone.startsWith('8')) return '+62' + phone;\n  return phone;\n}\n\n// Extract phone from GoWA format\nfunction extractPhone(data) {\n  let rawPhone = '';\n  if (data.from && typeof data.from === 'string') {\n    const match = data.from.match(/^(\\d+)/);\n    if (match) rawPhone = match[1];\n  }\n  if (!rawPhone) rawPhone = data.phone || data.phone_number || data.sender || data.wa_id || '';\n  if (!rawPhone) return '';\n  let phone = rawPhone.toString().trim();\n  phone = phone.replace(/@s\\.whatsapp\\.net.*$/, '').replace(/:.*$/, '');\n  return normalizePhone(phone);\n}\n\n// Extract text\nfunction extractText(data) {\n  if (data.message && typeof data.message === 'object') {\n    return data.message.text || data.message.body || '';\n  }\n  return data.text || data.body || '';\n}\n\nconst phone = extractPhone(inputData);\nconst text = extractText(inputData).toString().trim();\nconst name = inputData.pushname || inputData.name || 'User';\nconst imageUrl = inputData.image_url || (inputData.message && inputData.message.imageUrl) || null;\nconst imageId = inputData.image_id || (inputData.message && inputData.message.mediaId) || null;\n\nreturn [{ json: { skip: false, phone, text, name, image_url: imageUrl, image_id: imageId, original_payload: inputData } }];"
+        "jsCode": "// Normalize payload from GoWA\nconst inputData = $json.body || $json || {};\nconst eventType = inputData.event || '';\n\n// Skip non-message events (ack, delivered, sent, dll)\nconst skipEvents = ['message.ack', 'ack', 'delivered', 'sent', 'message.delivered', 'message.sent', 'message.waiting', 'message.revoked'];\nif (skipEvents.includes(eventType)) {\n  return [{ json: { skip: true, reason: 'status_notification', event: eventType } }];\n}\n\n// Normalize phone ke format +62\nfunction normalizePhone(phone) {\n  if (!phone) return '';\n  phone = phone.toString().replace(/[^\\d+]/g, '');\n  if (phone.startsWith('+62')) return phone;\n  if (phone.startsWith('62')) return '+' + phone;\n  if (phone.startsWith('0')) return '+62' + phone.substring(1);\n  if (phone.startsWith('8')) return '+62' + phone;\n  return phone;\n}\n\n// Extract phone from GoWA format\nfunction extractPhone(data) {\n  let rawPhone = '';\n  if (data.from && typeof data.from === 'string') {\n    const match = data.from.match(/^(\\d+)/);\n    if (match) rawPhone = match[1];\n  }\n  if (!rawPhone) rawPhone = data.phone || data.phone_number || data.sender || data.wa_id || '';\n  if (!rawPhone) return '';\n  let phone = rawPhone.toString().trim();\n  phone = phone.replace(/@s\\.whatsapp\\.net.*$/, '').replace(/:.*$/, '');\n  return normalizePhone(phone);\n}\n\n// Extract text\nfunction extractText(data) {\n  if (data.message && typeof data.message === 'object') {\n    return data.message.text || data.message.body || '';\n  }\n  return data.text || data.body || '';\n}\n\n// Extract image URL - check multiple possible locations\nfunction extractImageUrl(data) {\n  // Try root level first\n  if (data.image_url) return data.image_url;\n  if (data.imageUrl) return data.imageUrl;\n  \n  // Try nested in message object\n  if (data.message && typeof data.message === 'object') {\n    if (data.message.image_url) return data.message.image_url;\n    if (data.message.imageUrl) return data.message.imageUrl;\n    if (data.message.media && data.message.media.url) return data.message.media.url;\n  }\n  \n  // Try media object\n  if (data.media && data.media.url) return data.media.url;\n  \n  return null;\n}\n\n// Extract image ID\nfunction extractImageId(data) {\n  if (data.image_id) return data.image_id;\n  if (data.imageId) return data.imageId;\n  if (data.message && typeof data.message === 'object') {\n    if (data.message.image_id) return data.message.image_id;\n    if (data.message.imageId) return data.message.imageId;\n    if (data.message.mediaId) return data.message.mediaId;\n    if (data.message.media && data.message.media.id) return data.message.media.id;\n  }\n  if (data.media && data.media.id) return data.media.id;\n  return null;\n}\n\nconst phone = extractPhone(inputData);\nconst text = extractText(inputData).toString().trim();\nconst name = inputData.pushname || inputData.name || 'User';\nconst imageUrl = extractImageUrl(inputData);\nconst imageId = extractImageId(inputData);\n\n// Debug logging\nconsole.log('=== NORMALIZE PAYLOAD ===');\nconsole.log('Phone:', phone);\nconsole.log('Text:', text);\nconsole.log('Image URL:', imageUrl);\nconsole.log('Image ID:', imageId);\nconsole.log('Has Image:', !!(imageUrl || imageId));\nconsole.log('Original payload keys:', Object.keys(inputData));\nif (inputData.message) console.log('Message keys:', Object.keys(inputData.message));\nconsole.log('========================');\n\nreturn [{ json: { skip: false, phone, text, name, image_url: imageUrl, image_id: imageId, original_payload: inputData } }];;"
       },
       "id": "normalize",
       "name": "Normalize Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -60,7 +66,10 @@
       "name": "Check or Create User",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [650, 300]
+      "position": [
+        650,
+        300
+      ]
     },
     {
       "parameters": {
@@ -70,7 +79,10 @@
       "name": "Merge Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -105,7 +117,10 @@
       "name": "Detect Intent (AI)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [850, 300]
+      "position": [
+        850,
+        300
+      ]
     },
     {
       "parameters": {
@@ -115,7 +130,10 @@
       "name": "Detect Intent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [950, 300]
+      "position": [
+        950,
+        300
+      ]
     },
     {
       "parameters": {
@@ -178,7 +196,10 @@
       "name": "Route By Intent",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1150, 300]
+      "position": [
+        1150,
+        300
+      ]
     },
     {
       "parameters": {
@@ -207,7 +228,10 @@
       "name": "Update Reminder OFF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 200]
+      "position": [
+        1250,
+        200
+      ]
     },
     {
       "parameters": {
@@ -236,7 +260,10 @@
       "name": "Update Reminder ON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 300]
+      "position": [
+        1250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -265,7 +292,10 @@
       "name": "Update Style",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 400]
+      "position": [
+        1250,
+        400
+      ]
     },
     {
       "parameters": {
@@ -275,7 +305,10 @@
       "name": "Extract Period",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 500]
+      "position": [
+        1250,
+        500
+      ]
     },
     {
       "parameters": {
@@ -309,7 +342,10 @@
       "name": "Generate PDF Report",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1450, 500]
+      "position": [
+        1450,
+        500
+      ]
     },
     {
       "parameters": {
@@ -319,7 +355,10 @@
       "name": "Handle PDF Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1650, 500]
+      "position": [
+        1650,
+        500
+      ]
     },
     {
       "parameters": {
@@ -348,7 +387,10 @@
       "name": "Switch PDF Response",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1850, 500]
+      "position": [
+        1850,
+        500
+      ]
     },
     {
       "parameters": {
@@ -358,7 +400,10 @@
       "name": "Generate Error Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2050, 600]
+      "position": [
+        2050,
+        600
+      ]
     },
     {
       "parameters": {
@@ -392,7 +437,10 @@
       "name": "Send PDF via GoWA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [2050, 400]
+      "position": [
+        2050,
+        400
+      ]
     },
     {
       "parameters": {
@@ -423,7 +471,10 @@
       "name": "Check Struk Quota",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 600]
+      "position": [
+        1250,
+        600
+      ]
     },
     {
       "parameters": {
@@ -461,7 +512,10 @@
       "name": "Check Has Struk Quota",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1450, 600]
+      "position": [
+        1450,
+        600
+      ]
     },
     {
       "parameters": {
@@ -471,7 +525,10 @@
       "name": "Generate Quota Exceeded Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1650, 700]
+      "position": [
+        1650,
+        700
+      ]
     },
     {
       "parameters": {
@@ -497,14 +554,17 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o',\n  messages: [\n    {\n      role: 'system',\n      content: `Kamu adalah AI vision untuk ekstraksi transaksi dari gambar struk/nota atau bukti transfer.\n\nKembalikan JSON:\n{\n  \"amount\": number,\n  \"description\": string,\n  \"type\": \"income\" | \"expense\" | \"unknown\",\n  \"needs_confirmation\": boolean,\n  \"tanggal\": \"YYYY-MM-DD\" | null\n}\n\nAturan:\n- Jika struk toko (indomaret/alfamart/supermarket/pertamina/resto/cafe) → type=expense, needs_confirmation=false.\n- Jika bukti transfer/p2p/QRIS (DANA/OVO/Bank) dan arah dana tidak jelas → type=unknown, needs_confirmation=true.\n- Jika jelas dana MASUK ke user → type=income, needs_confirmation=false.\n- Jika jelas user membayar/kirim → type=expense, needs_confirmation=false.\n- Jangan paksa expense jika ragu; gunakan unknown + needs_confirmation=true.`\n    },\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'text',\n          text: 'Extract transaksi dari gambar struk ini. Return JSON saja, tanpa penjelasan.'\n        },\n        {\n          type: 'image_url',\n          image_url: {\n            url: $json.image_url || $('Normalize Payload').item.json.image_url\n          }\n        }\n      ]\n    }\n  ],\n  temperature: 0.1,\n  response_format: { type: 'json_object' }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o',\n  messages: [\n    {\n      role: 'system',\n      content: `Kamu adalah AI vision untuk ekstraksi transaksi dari gambar struk/nota atau bukti transfer.\n\nKembalikan JSON:\n{\n  \"amount\": number,\n  \"description\": string,\n  \"type\": \"income\" | \"expense\" | \"unknown\",\n  \"needs_confirmation\": boolean,\n  \"tanggal\": \"YYYY-MM-DD\" | null\n}\n\nATURAN PENTING:\n1. Struk toko (Indomaret/Alfamart/Supermarket/Pertamina/Resto/Cafe) → type=expense, needs_confirmation=false.\n\n2. Bukti transfer/p2p/QRIS (DANA/OVO/GoPay/Bank/QRIS/Send Money/Kirim Uang) → WAJIB needs_confirmation=true karena tidak jelas apakah ini pemasukan atau pengeluaran.\n\n3. Jika gambar menunjukkan:\n   - \"Send Money\" / \"Kirim Uang\" / \"Transfer\" → type=unknown, needs_confirmation=true (WAJIB)\n   - Logo DANA/OVO/GoPay dengan transfer → type=unknown, needs_confirmation=true (WAJIB)\n   - QRIS payment → type=unknown, needs_confirmation=true (WAJIB)\n   - Bank transfer → type=unknown, needs_confirmation=true (WAJIB)\n\n4. Hanya jika JELAS dana MASUK ke user (ada kata \"terima\", \"masuk\", \"diterima\", \"received\") → type=income, needs_confirmation=false.\n\n5. Hanya jika JELAS user membayar/kirim ke orang lain (ada kata \"bayar\", \"kirim\", \"send\", \"paid\") → type=expense, needs_confirmation=false.\n\n6. Jika RAGU atau tidak jelas arah dana → type=unknown, needs_confirmation=true (WAJIB).\n\nPENTING: Untuk semua transfer/p2p/QRIS, selalu set needs_confirmation=true agar user dikonfirmasi apakah ini pemasukan atau pengeluaran.`\n    },\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'text',\n          text: 'Extract transaksi dari gambar struk ini. Return JSON saja, tanpa penjelasan.'\n        },\n        {\n          type: 'image_url',\n          image_url: {\n            url: $json.image_url || $('Normalize Payload').item.json.image_url\n          }\n        }\n      ]\n    }\n  ],\n  temperature: 0.1,\n  response_format: { type: 'json_object' }\n}) }}",
         "options": {}
       },
       "id": "parse-struk-openrouter",
       "name": "Parse Struk (OpenRouter Vision)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1650, 500]
+      "position": [
+        1650,
+        500
+      ]
     },
     {
       "parameters": {
@@ -514,7 +574,10 @@
       "name": "Parse Struk Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1850, 500]
+      "position": [
+        1850,
+        500
+      ]
     },
     {
       "parameters": {
@@ -548,7 +611,10 @@
       "name": "Create Pending Upload",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1450, 700]
+      "position": [
+        1450,
+        700
+      ]
     },
     {
       "parameters": {
@@ -577,7 +643,10 @@
       "name": "Route Struk Confirmation",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [2050, 500]
+      "position": [
+        2050,
+        500
+      ]
     },
     {
       "parameters": {
@@ -587,7 +656,10 @@
       "name": "Generate Question",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 600]
+      "position": [
+        1450,
+        600
+      ]
     },
     {
       "parameters": {
@@ -621,7 +693,10 @@
       "name": "Confirm Income",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 700]
+      "position": [
+        1250,
+        700
+      ]
     },
     {
       "parameters": {
@@ -655,7 +730,10 @@
       "name": "Confirm Expense",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 800]
+      "position": [
+        1250,
+        800
+      ]
     },
     {
       "parameters": {
@@ -665,7 +743,10 @@
       "name": "Generate Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 700]
+      "position": [
+        1450,
+        700
+      ]
     },
     {
       "parameters": {
@@ -698,7 +779,10 @@
       "name": "Parse Transaction (OpenRouter)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 300]
+      "position": [
+        1250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -708,7 +792,10 @@
       "name": "Parse OpenRouter Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 300]
+      "position": [
+        1450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -737,7 +824,10 @@
       "name": "Check Has Transaction",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1450, 300]
+      "position": [
+        1450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -772,7 +862,10 @@
       "name": "Save Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1650, 200]
+      "position": [
+        1650,
+        200
+      ]
     },
     {
       "parameters": {
@@ -782,7 +875,10 @@
       "name": "Generate Transaction Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1850, 200]
+      "position": [
+        1850,
+        200
+      ]
     },
     {
       "parameters": {
@@ -792,7 +888,10 @@
       "name": "Generate Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1850, 400]
+      "position": [
+        1850,
+        400
+      ]
     },
     {
       "parameters": {
@@ -803,7 +902,10 @@
       "name": "Wait (Random Delay)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1650, 300]
+      "position": [
+        1650,
+        300
+      ]
     },
     {
       "parameters": {
@@ -837,7 +939,10 @@
       "name": "Send WhatsApp (GoWA)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1850, 300]
+      "position": [
+        1850,
+        300
+      ]
     },
     {
       "parameters": {
@@ -871,7 +976,10 @@
       "name": "Send AI Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1350, 500]
+      "position": [
+        1350,
+        500
+      ]
     },
     {
       "parameters": {
@@ -882,7 +990,10 @@
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2050, 300]
+      "position": [
+        2050,
+        300
+      ]
     },
     {
       "parameters": {
@@ -911,7 +1022,10 @@
       "name": "Check Skip",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [550, 300]
+      "position": [
+        550,
+        300
+      ]
     },
     {
       "parameters": {
@@ -922,139 +1036,468 @@
       "name": "Skip Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [750, 450]
+      "position": [
+        750,
+        450
+      ]
     }
   ],
   "connections": {
     "Webhook (Incoming WA)": {
-      "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize Payload": {
-      "main": [[{ "node": "Check Skip", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Skip": {
       "main": [
-        [{ "node": "Skip Response", "type": "main", "index": 0 }],
-        [{ "node": "Check or Create User", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Skip Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check or Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check or Create User": {
-      "main": [[{ "node": "Merge Data", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Merge Data": {
-      "main": [[{ "node": "Detect Intent (AI)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Detect Intent (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Detect Intent (AI)": {
-      "main": [[{ "node": "Detect Intent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Detect Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Detect Intent": {
-      "main": [[{ "node": "Route By Intent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Route By Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Route By Intent": {
       "main": [
-        [{ "node": "Save Transaction", "type": "main", "index": 0 }],
-        [{ "node": "Check Struk Quota", "type": "main", "index": 0 }],
-        [{ "node": "Send AI Reply", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Save Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Struk Quota",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Send AI Reply": {
-      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Reminder OFF": {
-      "main": [[{ "node": "Generate Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Reminder ON": {
-      "main": [[{ "node": "Generate Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Style": {
-      "main": [[{ "node": "Generate Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Reply": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Wait (Random Delay)": {
-      "main": [[{ "node": "Send WhatsApp (GoWA)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp (GoWA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Send WhatsApp (GoWA)": {
-      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract Period": {
-      "main": [[{ "node": "Generate PDF Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate PDF Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate PDF Report": {
-      "main": [[{ "node": "Handle PDF Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Handle PDF Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Handle PDF Response": {
-      "main": [[{ "node": "Switch PDF Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Switch PDF Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Switch PDF Response": {
       "main": [
-        [{ "node": "Send PDF via GoWA", "type": "main", "index": 0 }],
-        [{ "node": "Generate Error Message", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send PDF via GoWA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Generate Error Message": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Send PDF via GoWA": {
-      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Create Pending Upload": {
-      "main": [[{ "node": "Generate Question", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Question": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Confirm Income": {
-      "main": [[{ "node": "Generate Confirmation", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Confirm Expense": {
-      "main": [[{ "node": "Generate Confirmation", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Confirmation": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Transaction (OpenRouter)": {
-      "main": [[{ "node": "Parse OpenRouter Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse OpenRouter Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse OpenRouter Response": {
-      "main": [[{ "node": "Check Has Transaction", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Has Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Struk Quota": {
-      "main": [[{ "node": "Check Has Struk Quota", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Check Has Struk Quota",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Check Has Struk Quota": {
       "main": [
-        [{ "node": "Parse Struk (OpenRouter Vision)", "type": "main", "index": 0 }],
-        [{ "node": "Generate Quota Exceeded Reply", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Struk (OpenRouter Vision)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Quota Exceeded Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Generate Quota Exceeded Reply": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Struk (OpenRouter Vision)": {
-      "main": [[{ "node": "Parse Struk Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Struk Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Struk Response": {
-      "main": [[{ "node": "Route Struk Confirmation", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Route Struk Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Route Struk Confirmation": {
       "main": [
-        [{ "node": "Create Pending Upload", "type": "main", "index": 0 }],
-        [{ "node": "Save Transaction", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Create Pending Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Has Transaction": {
       "main": [
-        [{ "node": "Save Transaction", "type": "main", "index": 0 }],
-        [{ "node": "Generate Reply", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Save Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Save Transaction": {
-      "main": [[{ "node": "Send AI Reply", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Send AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Transaction Confirmation": {
-      "main": [[{ "node": "Wait (Random Delay)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
@@ -1067,4 +1510,3 @@
   "updatedAt": "2024-01-01T00:00:00.000Z",
   "versionId": "1"
 }
-

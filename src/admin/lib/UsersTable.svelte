@@ -28,6 +28,7 @@
   let showDeleteModal = false;
   let userToDelete = null;
   let deleting = false;
+  let togglingUnlimited = false;
 
   async function fetchUsers() {
     loading = true;
@@ -325,6 +326,51 @@
     }
   }
 
+  async function handleToggleUnlimited(user, event) {
+    event.stopPropagation();
+    if (!user) return;
+    
+    const newValue = !user.is_unlimited;
+    togglingUnlimited = true;
+    
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      const response = await apiFetch(`/admin/users/${user.id}/unlimited`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({ is_unlimited: newValue }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          showToastMessage(
+            newValue ? 'User di-set unlimited!' : 'Unlimited status dihapus!',
+            'success'
+          );
+          await fetchUsers();
+        }
+      } else {
+        const error = await response.json();
+        showToastMessage(error.message || 'Gagal toggle unlimited', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to toggle unlimited:', error);
+      showToastMessage('Gagal toggle unlimited', 'error');
+    } finally {
+      togglingUnlimited = false;
+    }
+  }
+
   function showToastMessage(message, type = 'success') {
     toastMessage = message;
     toastType = type;
@@ -463,6 +509,7 @@
             <th class="sortable" on:click={() => handleSort('expires_at')}>
               Expires At
             </th>
+            <th>Unlimited</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -529,6 +576,17 @@
                 {:else}
                   <span class="badge badge-lifetime" title="Tidak ada expiry date">Lifetime</span>
                 {/if}
+              </td>
+              <td>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={user.is_unlimited || false}
+                    on:change={(e) => handleToggleUnlimited(user, e)}
+                    disabled={togglingUnlimited}
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
               </td>
               <td>
                 <div class="action-buttons">
@@ -649,6 +707,19 @@
               {:else}
                 <span class="badge badge-lifetime">Lifetime</span>
               {/if}
+            </div>
+            
+            <div class="card-row">
+              <span class="card-label">Unlimited:</span>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={user.is_unlimited || false}
+                  on:change={(e) => handleToggleUnlimited(user, e)}
+                  disabled={togglingUnlimited}
+                />
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
         </div>
@@ -1651,6 +1722,61 @@
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+  }
+
+  /* Toggle Switch Styles */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background-color: #10b981;
+  }
+
+  .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+  }
+
+  .toggle-switch input:disabled + .toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .toggle-switch input:focus + .toggle-slider {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
   }
 
   @media (max-width: 640px) {
