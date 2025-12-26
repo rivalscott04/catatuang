@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Pricing;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -277,6 +278,87 @@ class AdminDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User berhasil dihapus',
+        ]);
+    }
+
+    /**
+     * Get financial data (income and expense) for all users
+     */
+    public function financialData(Request $request)
+    {
+        $perPage = min((int) $request->input('per_page', 15), 100);
+        $search = $request->input('search');
+
+        $query = User::select([
+            'users.id',
+            'users.name',
+            'users.phone_number',
+            'users.plan',
+            'users.status',
+            'users.created_at'
+        ])
+        ->withCount([
+            'transactions as total_income' => function ($q) {
+                $q->where('type', 'income');
+            },
+            'transactions as total_expense' => function ($q) {
+                $q->where('type', 'expense');
+            }
+        ])
+        ->addSelect([
+            'income_sum' => Transaction::selectRaw('COALESCE(SUM(amount), 0)')
+                ->whereColumn('user_id', 'users.id')
+                ->where('type', 'income'),
+            'expense_sum' => Transaction::selectRaw('COALESCE(SUM(amount), 0)')
+                ->whereColumn('user_id', 'users.id')
+                ->where('type', 'expense'),
+        ]);
+
+        // Search filter
+        if ($search) {
+            $search = trim($search);
+            if (preg_match('/^[a-zA-Z0-9\s\-\+\(\)]+$/', $search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('users.phone_number', 'like', "%{$search}%")
+                        ->orWhere('users.name', 'like', "%{$search}%");
+                });
+            }
+        }
+
+        // Get users with pagination
+        $users = $query->orderBy('users.created_at', 'desc')
+            ->paginate($perPage);
+
+        // Format the response with financial data
+        $formattedUsers = $users->getCollection()->map(function ($user) {
+            $incomeSum = (int) ($user->income_sum ?? 0);
+            $expenseSum = (int) ($user->expense_sum ?? 0);
+            
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone_number' => $user->phone_number,
+                'plan' => $user->plan,
+                'status' => $user->status,
+                'created_at' => $user->created_at,
+                'total_income' => $incomeSum,
+                'total_expense' => $expenseSum,
+                'total_income_count' => $user->total_income ?? 0,
+                'total_expense_count' => $user->total_expense ?? 0,
+                'formatted_income' => 'Rp ' . number_format($incomeSum, 0, ',', '.'),
+                'formatted_expense' => 'Rp ' . number_format($expenseSum, 0, ',', '.'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'data' => $formattedUsers,
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+            ],
         ]);
     }
 }

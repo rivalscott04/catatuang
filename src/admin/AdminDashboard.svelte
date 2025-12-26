@@ -6,6 +6,7 @@
   import PasswordSettings from './lib/PasswordSettings.svelte';
   import Svend3rBarChart from './lib/Svend3rBarChart.svelte';
   import Svend3rLineChart from './lib/Svend3rLineChart.svelte';
+  import FinancialDataTable from './lib/FinancialDataTable.svelte';
   import { apiFetch } from './lib/api.js';
 
   const dispatch = createEventDispatcher();
@@ -14,7 +15,8 @@
 
   let stats = null;
   let loading = true;
-  let activeTab = 'dashboard'; // dashboard, users, pricing, password
+  let activeTab = 'dashboard'; // dashboard, users, pricing, password, financial
+  let financialTab = 'pemasukan'; // pemasukan, pengeluaran
   let refreshing = false;
   let sidebarOpen = false;
 
@@ -210,6 +212,21 @@
         </svg>
         Password
       </button>
+      
+      <button
+        class="sidebar-item"
+        class:active={activeTab === 'financial'}
+        on:click={() => {
+          activeTab = 'financial';
+          sidebarOpen = false;
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"></line>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+        Data Keuangan
+      </button>
     </div>
 
     <main class="main-content">
@@ -366,6 +383,31 @@
             <h1>Password Settings</h1>
           </div>
           <PasswordSettings />
+        </div>
+      {:else if activeTab === 'financial'}
+        <div class="financial-tab">
+          <div class="tab-header">
+            <h1>Data Keuangan</h1>
+          </div>
+          
+          <div class="financial-tabs">
+            <button
+              class="financial-tab-btn"
+              class:active={financialTab === 'pemasukan'}
+              on:click={() => financialTab = 'pemasukan'}
+            >
+              Pemasukan
+            </button>
+            <button
+              class="financial-tab-btn"
+              class:active={financialTab === 'pengeluaran'}
+              on:click={() => financialTab = 'pengeluaran'}
+            >
+              Pengeluaran
+            </button>
+          </div>
+          
+          <FinancialDataTable activeTab={financialTab} />
         </div>
       {/if}
     </main>
@@ -972,6 +1014,38 @@
     .plan-count {
       font-size: 2rem;
     }
+  }
+
+  .financial-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  .financial-tab-btn {
+    padding: 0.875rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #64748b;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    bottom: -2px;
+  }
+
+  .financial-tab-btn:hover {
+    color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .financial-tab-btn.active {
+    color: #10b981;
+    border-bottom-color: #10b981;
+    font-weight: 600;
   }
 </style>
 

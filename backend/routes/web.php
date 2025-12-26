@@ -30,6 +30,9 @@ Route::prefix('admin')->group(function () {
         Route::put('/users/{id}/plan', [AdminDashboardController::class, 'updateUserPlan']);
         Route::delete('/users/{id}', [AdminDashboardController::class, 'deleteUser']);
         
+        // Financial Data API
+        Route::get('/financial-data', [AdminDashboardController::class, 'financialData']);
+        
         // Pricing API
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::get('/pricing/{plan}', [AdminPricingController::class, 'show']);
