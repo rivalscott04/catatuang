@@ -36,7 +36,11 @@ class UserController extends Controller
         // Use database transaction to prevent race conditions
         $user = DB::transaction(function () use ($phone, $name) {
             // Try to find existing user first (with lock to prevent race condition)
-            $user = User::where('phone_number', $phone)->lockForUpdate()->first();
+            // Prioritise the best plan if duplicates exist (vip > pro > free)
+            $user = User::where('phone_number', $phone)
+                ->orderByRaw("FIELD(plan, 'vip', 'pro', 'free'), id desc")
+                ->lockForUpdate()
+                ->first();
 
             if ($user) {
                 // User exists, update name if provided and user has no name
@@ -70,7 +74,9 @@ class UserController extends Controller
                 // Error code 23000 is for integrity constraint violation (unique constraint)
                 if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'UNIQUE constraint')) {
                     // Another request created the user, fetch it
-                    $user = User::where('phone_number', $phone)->first();
+                    $user = User::where('phone_number', $phone)
+                        ->orderByRaw("FIELD(plan, 'vip', 'pro', 'free'), id desc")
+                        ->first();
                     if ($user && $name && !$user->name) {
                         $user->update(['name' => $name]);
                         $user->refresh();
