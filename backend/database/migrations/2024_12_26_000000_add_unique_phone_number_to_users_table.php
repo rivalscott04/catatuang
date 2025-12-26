@@ -8,7 +8,14 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->unique('phone_number', 'users_phone_number_unique');
+            // Cek apakah index sudah ada sebelum membuat
+            $connection = Schema::getConnection();
+            $doctrineSchemaManager = $connection->getDoctrineSchemaManager();
+            $indexes = $doctrineSchemaManager->listTableIndexes('users');
+            
+            if (!isset($indexes['users_phone_number_unique'])) {
+                $table->unique('phone_number', 'users_phone_number_unique');
+            }
         });
     }
 
