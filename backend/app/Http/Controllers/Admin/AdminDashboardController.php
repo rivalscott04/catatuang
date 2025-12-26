@@ -400,7 +400,51 @@ class AdminDashboardController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'expenses' => $expenses,
+                'transactions' => $expenses,
+                'total' => $total,
+                'month' => $month,
+            ],
+        ]);
+    }
+
+    /**
+     * Get income details for a specific user with month filter
+     */
+    public function getUserIncomes(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        $query = Transaction::where('user_id', $id)
+            ->where('type', 'income');
+
+        if ($month) {
+            // Validate month format
+            if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+                $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+                $query->whereBetween('tanggal', [$startDate, $endDate]);
+            }
+        }
+
+        $incomes = $query->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $total = $incomes->sum('amount');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'transactions' => $incomes,
                 'total' => $total,
                 'month' => $month,
             ],
@@ -456,6 +500,65 @@ class AdminDashboardController extends Controller
             ]);
 
             $filename = 'pengeluaran_' . str_replace(' ', '_', $user->name) . '_' . ($month ?: 'all') . '.pdf';
+            
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate PDF: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate PDF for user incomes
+     */
+    public function generateIncomePdf(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        $query = Transaction::where('user_id', $id)
+            ->where('type', 'income');
+
+        if ($month) {
+            // Validate month format
+            if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+                $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+                $query->whereBetween('tanggal', [$startDate, $endDate]);
+            }
+        }
+
+        $incomes = $query->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $total = $incomes->sum('amount');
+
+        // Format month for display
+        $monthDisplay = $month 
+            ? Carbon::createFromFormat('Y-m', $month)->format('F Y')
+            : 'Semua Waktu';
+
+        // Generate PDF using dompdf
+        try {
+            $pdf = Pdf::loadView('reports.income-detail', [
+                'user' => $user,
+                'incomes' => $incomes,
+                'total' => $total,
+                'month' => $monthDisplay,
+            ]);
+
+            $filename = 'pemasukan_' . str_replace(' ', '_', $user->name) . '_' . ($month ?: 'all') . '.pdf';
             
             return $pdf->download($filename);
         } catch (\Exception $e) {

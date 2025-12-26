@@ -497,7 +497,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o',\n  messages: [\n    {\n      role: 'system',\n      content: 'Kamu adalah AI yang membantu extract informasi transaksi dari gambar struk/nota (alfamart, indomaret, supermarket, pertamina, dll). Extract amount (dalam rupiah, angka saja), description (nama merchant/toko), dan tanggal jika ada. Semua struk adalah expense (pengeluaran). Return JSON format: {\\\"amount\\\": number, \\\"description\\\": string, \\\"type\\\": \\\"expense\\\", \\\"tanggal\\\": \\\"YYYY-MM-DD\\\" atau null}'\n    },\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'text',\n          text: 'Extract transaksi dari gambar struk ini. Return JSON saja, tanpa penjelasan.'\n        },\n        {\n          type: 'image_url',\n          image_url: {\n            url: $json.image_url || $('Normalize Payload').item.json.image_url\n          }\n        }\n      ]\n    }\n  ],\n  temperature: 0.3,\n  response_format: { type: 'json_object' }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o',\n  messages: [\n    {\n      role: 'system',\n      content: `Kamu adalah AI vision untuk ekstraksi transaksi dari gambar struk/nota atau bukti transfer.\n\nKembalikan JSON:\n{\n  \"amount\": number,\n  \"description\": string,\n  \"type\": \"income\" | \"expense\" | \"unknown\",\n  \"needs_confirmation\": boolean,\n  \"tanggal\": \"YYYY-MM-DD\" | null\n}\n\nAturan:\n- Jika struk toko (indomaret/alfamart/supermarket/pertamina/resto/cafe) → type=expense, needs_confirmation=false.\n- Jika bukti transfer/p2p/QRIS (DANA/OVO/Bank) dan arah dana tidak jelas → type=unknown, needs_confirmation=true.\n- Jika jelas dana MASUK ke user → type=income, needs_confirmation=false.\n- Jika jelas user membayar/kirim → type=expense, needs_confirmation=false.\n- Jangan paksa expense jika ragu; gunakan unknown + needs_confirmation=true.`\n    },\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'text',\n          text: 'Extract transaksi dari gambar struk ini. Return JSON saja, tanpa penjelasan.'\n        },\n        {\n          type: 'image_url',\n          image_url: {\n            url: $json.image_url || $('Normalize Payload').item.json.image_url\n          }\n        }\n      ]\n    }\n  ],\n  temperature: 0.1,\n  response_format: { type: 'json_object' }\n}) }}",
         "options": {}
       },
       "id": "parse-struk-openrouter",
@@ -508,7 +508,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse OpenRouter vision response\nconst response = $json.choices?.[0]?.message?.content || '{}';\nlet parsed = {};\n\ntry {\n  parsed = JSON.parse(response);\n} catch (e) {\n  console.error('Failed to parse OpenRouter response:', e);\n  parsed = {};\n}\n\nconst amount = parsed.amount || null;\nconst description = parsed.description || 'Struk';\nconst type = 'expense'; // Always expense for struk\nconst tanggal = parsed.tanggal || new Date().toISOString().split('T')[0];\n\n// Get original data\nconst normalizeData = $('Normalize Payload').item.json || {};\nconst phone = normalizeData.phone || $json.phone || '';\n\n// Validate\nconst hasTransaction = amount && amount > 0;\n\nreturn [{ json: { \n  ...$('Detect Intent').item.json,\n  phone,\n  parsed_amount: amount,\n  parsed_description: description,\n  parsed_type: type,\n  parsed_tanggal: tanggal,\n  has_transaction: hasTransaction,\n  source: 'receipt'\n} }];"
+        "jsCode": "// Parse OpenRouter vision response\nconst response = $json.choices?.[0]?.message?.content || '{}';\nlet parsed = {};\n\ntry {\n  parsed = JSON.parse(response);\n} catch (e) {\n  console.error('Failed to parse OpenRouter response:', e);\n  parsed = {};\n}\n\nconst amount = parsed.amount || null;\nconst description = (parsed.description || 'Struk').toString();\nconst aiType = (parsed.type || 'unknown').toLowerCase();\nconst tanggal = parsed.tanggal || new Date().toISOString().split('T')[0];\n\n// Deteksi indikasi transfer/QRIS/p2p untuk wajib konfirmasi\nconst transferKeywords = ['dana', 'ovo', 'gopay', 'qris', 'bank', 'transfer', 'send money', 'kirim', 'tf', 'rekening'];\nconst descLower = description.toLowerCase();\nconst isTransfer = transferKeywords.some(k => descLower.includes(k));\n\nlet needsConfirmation = parsed.needs_confirmation === true || aiType === 'unknown' || isTransfer;\n\n// Get original data\nconst normalizeData = $('Normalize Payload').item.json || {};\nconst phone = normalizeData.phone || $json.phone || '';\n\n// Decide final intent and type\nlet intent = 'save_transaction';\nlet finalType = aiType === 'income' || aiType === 'expense' ? aiType : 'expense';\nif (needsConfirmation) {\n  intent = 'image_pending';\n}\n\nconst hasTransaction = amount && amount > 0;\n\nreturn [{ json: { \n  ...$('Detect Intent').item.json,\n  phone,\n  parsed_amount: amount,\n  parsed_description: description,\n  parsed_type: finalType,\n  parsed_tanggal: tanggal,\n  parsed_needs_confirmation: needsConfirmation,\n  intent,\n  has_transaction: hasTransaction,\n  source: 'receipt'\n} }];"
       },
       "id": "parse-struk-response",
       "name": "Parse Struk Response",
@@ -549,6 +549,35 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [1450, 700]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "need-confirm",
+              "leftValue": "={{ $json.parsed_needs_confirmation }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "route-struk-confirmation",
+      "name": "Route Struk Confirmation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [2050, 500]
     },
     {
       "parameters": {
@@ -1007,7 +1036,13 @@
       "main": [[{ "node": "Parse Struk Response", "type": "main", "index": 0 }]]
     },
     "Parse Struk Response": {
-      "main": [[{ "node": "Save Transaction", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Route Struk Confirmation", "type": "main", "index": 0 }]]
+    },
+    "Route Struk Confirmation": {
+      "main": [
+        [{ "node": "Create Pending Upload", "type": "main", "index": 0 }],
+        [{ "node": "Save Transaction", "type": "main", "index": 0 }]
+      ]
     },
     "Check Has Transaction": {
       "main": [

@@ -89,7 +89,7 @@
   }
 
   function handleViewDetail(userId, userName) {
-    dispatch('view-detail', { userId, userName });
+    dispatch('view-detail', { userId, userName, type: activeTab });
   }
 
   // Watch for activeTab changes and refetch data
@@ -137,9 +137,7 @@
               <th>Jumlah Transaksi</th>
             {/if}
             <th>Tanggal Daftar</th>
-            {#if activeTab === 'pengeluaran'}
-              <th>Action</th>
-            {/if}
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -189,17 +187,15 @@
                 </td>
               {/if}
               <td>{formatDate(user.created_at)}</td>
-              {#if activeTab === 'pengeluaran'}
-                <td>
-                  <button 
-                    class="btn-detail" 
-                    on:click={() => handleViewDetail(user.id, user.name)}
-                    title="Lihat Detail Pengeluaran"
-                  >
-                    Detail
-                  </button>
-                </td>
-              {/if}
+              <td>
+                <button 
+                  class="btn-detail" 
+                  on:click={() => handleViewDetail(user.id, user.name)}
+                  title={activeTab === 'pemasukan' ? 'Lihat Detail Pemasukan' : 'Lihat Detail Pengeluaran'}
+                >
+                  Detail
+                </button>
+              </td>
             </tr>
           {/each}
         </tbody>
@@ -263,16 +259,14 @@
               <span>{formatDate(user.created_at)}</span>
             </div>
             
-            {#if activeTab === 'pengeluaran'}
-              <div class="card-row">
-                <button 
-                  class="btn-detail btn-detail-mobile" 
-                  on:click={() => handleViewDetail(user.id, user.name)}
-                >
-                  Lihat Detail Pengeluaran
-                </button>
-              </div>
-            {/if}
+            <div class="card-row">
+              <button 
+                class="btn-detail btn-detail-mobile" 
+                on:click={() => handleViewDetail(user.id, user.name)}
+              >
+                {activeTab === 'pemasukan' ? 'Lihat Detail Pemasukan' : 'Lihat Detail Pengeluaran'}
+              </button>
+            </div>
           </div>
         </div>
       {/each}

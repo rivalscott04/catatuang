@@ -8,17 +8,23 @@
 
   export let userId = null;
   export let userName = '';
+  export let type = 'pengeluaran'; // 'pemasukan' or 'pengeluaran'
 
-  let expenses = [];
+  let transactions = [];
   let loading = true;
   let selectedMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-  let totalExpense = 0;
+  let totalAmount = 0;
   let showToast = false;
   let toastMessage = '';
   let toastType = 'success';
   let generatingPdf = false;
 
-  async function fetchExpenseDetails() {
+  $: isIncome = type === 'pemasukan';
+  $: isExpense = type === 'pengeluaran';
+  $: pageTitle = isIncome ? 'Detail Pemasukan' : 'Detail Pengeluaran';
+  $: apiEndpoint = isIncome ? 'incomes' : 'expenses';
+
+  async function fetchTransactionDetails() {
     if (!userId) return;
     
     loading = true;
@@ -27,22 +33,22 @@
         month: selectedMonth,
       });
 
-      const response = await apiFetch(`/admin/users/${userId}/expenses?${params}`, {
+      const response = await apiFetch(`/admin/users/${userId}/${apiEndpoint}?${params}`, {
         method: 'GET',
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          expenses = data.data.expenses || [];
-          totalExpense = data.data.total || 0;
+          transactions = data.data.transactions || [];
+          totalAmount = data.data.total || 0;
         }
       } else {
-        showToastMessage('Gagal memuat detail pengeluaran', 'error');
+        showToastMessage(`Gagal memuat detail ${isIncome ? 'pemasukan' : 'pengeluaran'}`, 'error');
       }
     } catch (error) {
-      console.error('Failed to fetch expense details:', error);
-      showToastMessage('Gagal memuat detail pengeluaran', 'error');
+      console.error(`Failed to fetch ${type} details:`, error);
+      showToastMessage(`Gagal memuat detail ${isIncome ? 'pemasukan' : 'pengeluaran'}`, 'error');
     } finally {
       loading = false;
     }
@@ -57,7 +63,7 @@
         month: selectedMonth,
       });
 
-      const response = await apiFetch(`/admin/users/${userId}/expenses/pdf?${params}`, {
+      const response = await apiFetch(`/admin/users/${userId}/${apiEndpoint}/pdf?${params}`, {
         method: 'GET',
       });
 
@@ -66,7 +72,7 @@
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `pengeluaran_${userName}_${selectedMonth}.pdf`;
+        a.download = `${type}_${userName}_${selectedMonth}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -114,12 +120,12 @@
   }
 
   $: if (userId && selectedMonth) {
-    fetchExpenseDetails();
+    fetchTransactionDetails();
   }
 
   onMount(() => {
     if (userId) {
-      fetchExpenseDetails();
+      fetchTransactionDetails();
     }
   });
 </script>
@@ -134,13 +140,15 @@
         Kembali
       </button>
       <div class="header-info">
-        <h1>Detail Pengeluaran</h1>
+        <h1>{pageTitle}</h1>
         <p class="user-name">{userName}</p>
       </div>
     </div>
     <div class="header-actions">
       <button 
         class="btn-generate-pdf" 
+        class:income={isIncome}
+        class:expense={isExpense}
         on:click={generatePdf}
         disabled={generatingPdf || loading}
       >
@@ -159,7 +167,7 @@
     </div>
   </div>
 
-  <div class="filters-section">
+  <div class="filters-section" class:income={isIncome} class:expense={isExpense}>
     <div class="filter-group">
       <label for="month-filter">Filter Bulan:</label>
       <input
@@ -169,9 +177,11 @@
         class="month-input"
       />
     </div>
-    <div class="total-summary">
-      <span class="total-label">Total Pengeluaran {formatMonth(selectedMonth)}:</span>
-      <span class="total-amount">{formatCurrency(totalExpense)}</span>
+    <div class="total-summary" class:income={isIncome} class:expense={isExpense}>
+      <span class="total-label">Total {isIncome ? 'Pemasukan' : 'Pengeluaran'} {formatMonth(selectedMonth)}:</span>
+      <span class="total-amount" class:income={isIncome} class:expense={isExpense}>
+        {formatCurrency(totalAmount)}
+      </span>
     </div>
   </div>
 
@@ -190,28 +200,30 @@
           </tr>
         </thead>
         <tbody>
-          {#each expenses as expense, index}
+          {#each transactions as transaction, index}
             <tr>
               <td>{index + 1}</td>
-              <td>{formatDate(expense.tanggal)}</td>
-              <td class="amount-cell">{formatCurrency(expense.amount)}</td>
-              <td>{expense.description || '-'}</td>
+              <td>{formatDate(transaction.tanggal)}</td>
+              <td class="amount-cell" class:income={isIncome} class:expense={isExpense}>
+                {formatCurrency(transaction.amount)}
+              </td>
+              <td>{transaction.description || '-'}</td>
               <td>
-                <span class="source-badge">{expense.source || '-'}</span>
+                <span class="source-badge">{transaction.source || '-'}</span>
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
 
-      {#if expenses.length === 0}
+      {#if transactions.length === 0}
         <div class="empty-state">
           <svg class="empty-icon" width="64" height="64" viewBox="0 0 64 64" fill="none">
             <circle cx="32" cy="32" r="30" stroke="#e2e8f0" stroke-width="2"/>
             <path d="M32 20v24M20 32h24" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <h3>Tidak ada data pengeluaran</h3>
-          <p>Belum ada pengeluaran untuk bulan {formatMonth(selectedMonth)}</p>
+          <h3>Tidak ada data {isIncome ? 'pemasukan' : 'pengeluaran'}</h3>
+          <p>Belum ada {isIncome ? 'pemasukan' : 'pengeluaran'} untuk bulan {formatMonth(selectedMonth)}</p>
         </div>
       {/if}
     </div>
@@ -288,7 +300,6 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: #ef4444;
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -298,7 +309,21 @@
     transition: all 0.2s;
   }
 
-  .btn-generate-pdf:hover:not(:disabled) {
+  .btn-generate-pdf.income {
+    background: #10b981;
+  }
+
+  .btn-generate-pdf.income:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  }
+
+  .btn-generate-pdf.expense {
+    background: #ef4444;
+  }
+
+  .btn-generate-pdf.expense:hover:not(:disabled) {
     background: #dc2626;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
@@ -326,10 +351,17 @@
     align-items: center;
     margin-bottom: 1.5rem;
     padding: 1.5rem;
-    background: #f8fafc;
     border-radius: 12px;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+
+  .filters-section.income {
+    background: #f0fdf4;
+  }
+
+  .filters-section.expense {
+    background: #fef2f2;
   }
 
   .filter-group {
@@ -373,6 +405,13 @@
   .total-amount {
     font-size: 1.25rem;
     font-weight: 700;
+  }
+
+  .total-amount.income {
+    color: #10b981;
+  }
+
+  .total-amount.expense {
     color: #ef4444;
   }
 
@@ -418,6 +457,13 @@
 
   .amount-cell {
     font-weight: 600;
+  }
+
+  .amount-cell.income {
+    color: #10b981;
+  }
+
+  .amount-cell.expense {
     color: #ef4444;
   }
 

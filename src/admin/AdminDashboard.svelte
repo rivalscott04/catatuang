@@ -20,7 +20,7 @@
   let financialTab = 'pemasukan'; // pemasukan, pengeluaran
   let refreshing = false;
   let sidebarOpen = false;
-  let expenseDetailView = null; // { userId, userName } or null
+  let expenseDetailView = null; // { userId, userName, type } or null
 
 
   async function getCsrfToken() {
@@ -392,6 +392,7 @@
             <ExpenseDetailPage 
               userId={expenseDetailView.userId} 
               userName={expenseDetailView.userName}
+              type={expenseDetailView.type || 'pengeluaran'}
               on:back={() => expenseDetailView = null}
             />
           {:else}
