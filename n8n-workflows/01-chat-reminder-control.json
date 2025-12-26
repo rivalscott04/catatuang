@@ -86,6 +86,141 @@
     },
     {
       "parameters": {
+        "method": "GET",
+        "url": "https://api.catatuang.click/api/internal/uploads/pending",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone || $json.phone_number || '' }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "5d6c97839c8140f115fae5b1e6ac71fd3e7952b96c26c6df11e7660777bda653"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "check-pending-upload",
+      "name": "Check Pending Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if user has pending upload AND reply is confirmation\nconst mergedData = $('Merge Data').first().json || {};\nconst pendingResponse = $json || {};\n\n// Parse pending upload response\nlet hasPendingUpload = false;\nlet pendingData = null;\n\nif (pendingResponse.body && typeof pendingResponse.body === 'object') {\n  const body = pendingResponse.body;\n  if (body.success === true && body.data && body.data.pending_upload_id) {\n    hasPendingUpload = true;\n    pendingData = body.data;\n  }\n} else if (pendingResponse.success === true && pendingResponse.data && pendingResponse.data.pending_upload_id) {\n  hasPendingUpload = true;\n  pendingData = pendingResponse.data;\n}\n\n// Detect if user reply is confirmation (pemasukan/pengeluaran/masuk/keluar)\nconst text = (mergedData.text || '').toLowerCase().trim();\nconst confirmationKeywords = {\n  income: ['pemasukan', 'masuk', 'income', 'terima', 'diterima', 'dapat', 'dapet'],\n  expense: ['pengeluaran', 'keluar', 'expense', 'bayar', 'bayar', 'kirim', 'kirim uang']\n};\n\nlet isConfirmation = false;\nlet confirmationType = null;\n\n// Check for income keywords\nfor (const keyword of confirmationKeywords.income) {\n  if (text.includes(keyword)) {\n    isConfirmation = true;\n    confirmationType = 'income';\n    break;\n  }\n}\n\n// Check for expense keywords if not income\nif (!isConfirmation) {\n  for (const keyword of confirmationKeywords.expense) {\n    if (text.includes(keyword)) {\n      isConfirmation = true;\n      confirmationType = 'expense';\n      break;\n    }\n  }\n}\n\n// Determine intent\nlet intent = 'continue_normal'; // Default: continue to Detect Intent (AI)\n\n// SKIP Detect Intent jika ada image_url (image sudah di-handle di flow lain)\nif (mergedData.image_url || mergedData.image_id) {\n  intent = 'skip_detect_intent';\n} else if (hasPendingUpload && isConfirmation) {\n  // User has pending upload AND replied with confirmation → route to Confirm Income/Expense\n  intent = confirmationType === 'income' ? 'confirm_income' : 'confirm_expense';\n} else if (hasPendingUpload && !isConfirmation && !mergedData.image_url) {\n  // User has pending upload but reply is NOT confirmation AND not sending new image\n  // This means user is replying something else → still ask confirmation\n  intent = 'ask_confirmation_again';\n}\n\nconsole.log('=== CHECK PENDING UPLOAD & CONFIRMATION ===');\nconsole.log('Has Pending Upload:', hasPendingUpload);\nconsole.log('Pending Data:', JSON.stringify(pendingData));\nconsole.log('User Text:', text);\nconsole.log('Is Confirmation:', isConfirmation);\nconsole.log('Confirmation Type:', confirmationType);\nconsole.log('Intent:', intent);\nconsole.log('===========================================');\n\nreturn [{ json: { \n  ...mergedData,\n  has_pending_upload: hasPendingUpload,\n  pending_upload_data: pendingData,\n  is_confirmation: isConfirmation,\n  confirmation_type: confirmationType,\n  intent: intent\n} }];"
+      },
+      "id": "detect-confirmation",
+      "name": "Detect Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "confirm_income",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "confirm_income"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "confirm_expense",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "confirm_expense"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "ask_confirmation_again",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "ask_confirmation_again"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "skip_detect_intent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "skip_detect_intent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-confirmation",
+      "name": "Route Confirmation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://openrouter.ai/api/v1/chat/completions",
         "authentication": "none",
@@ -108,7 +243,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o-mini',\n  messages: [\n    {\n      role: 'system',\n      content: `Kamu adalah asisten pencatat keuangan via WhatsApp. Nama user: ${$json.name || 'Kak'}.\n\nTugas:\n1. Jika user menyapa (halo, hai, hi, dll) → balas sapaan ramah dan tanya \"mau catat apa hari ini?\"\n2. Jika user kirim transaksi (ada nominal uang) → parse dan extract kategori\n3. Jika tidak jelas → tanya mau catat apa\n\nKembalikan JSON:\n{\n  \"reply\": \"pesan balasan untuk user (untuk greeting saja)\",\n  \"is_transaction\": true/false,\n  \"amount\": number atau null,\n  \"description\": \"deskripsi transaksi\" atau null,\n  \"category\": \"kategori\" atau null,\n  \"type\": \"income\" atau \"expense\" atau null\n}\n\nKategori yang tersedia:\n- Makan (untuk makanan, minuman, kopi, restoran, dll)\n- Transport (untuk bensin, parkir, ojek, taksi, service motor, dll)\n- Belanja (untuk belanja kebutuhan, pakaian, dll)\n- Hiburan (untuk bioskop, game, dll)\n- Kesehatan (untuk obat, dokter, dll)\n- Tagihan (untuk listrik, air, internet, dll)\n- Lainnya (untuk yang tidak jelas)\n\nContoh transaksi:\n- \"kopi 20k\" → amount: 20000, description: \"kopi\", category: \"Makan\", type: \"expense\"\n- \"makan siang 25rb\" → amount: 25000, description: \"makan siang\", category: \"Makan\", type: \"expense\"\n- \"service motor 150rb\" → amount: 150000, description: \"service motor\", category: \"Transport\", type: \"expense\"\n- \"gaji 5jt\" → amount: 5000000, description: \"gaji\", category: \"Lainnya\", type: \"income\"\n- \"bonus 500rb\" → amount: 500000, description: \"bonus\", category: \"Lainnya\", type: \"income\"\n\nKata kunci income: gaji, bonus, masuk, terima, dapat, saldo masuk, transfer masuk\nSelain itu = expense\n\nUntuk greeting, balas dengan gaya santai dan ramah. Gunakan emoji sesekali.`\n    },\n    {\n      role: 'user',\n      content: $json.text || 'halo'\n    }\n  ],\n  temperature: 0.1,\n  response_format: { type: 'json_object' }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'openai/gpt-4o-mini',\n  messages: [\n    {\n      role: 'system',\n      content: `Kamu adalah asisten pencatat keuangan via WhatsApp. Nama user: ${$json.name || 'Kak'}.\n\nATURAN PENTING:\n1. Jika user MENYAPA (halo, hai, hi, selamat pagi, dll) → balas sapaan ramah dan tanya \"mau catat apa hari ini?\"\n2. Jika user KIRIM TRANSAKSI (ada nominal uang seperti \"bioskop 150k\", \"kopi 20rb\", \"gaji 5jt\") → LANGSUNG PARSE dan extract, JANGAN TANYA LAGI!\n3. Jika tidak jelas atau tidak ada nominal → tanya \"mau catat apa hari ini?\"\n\nPENTING: Jika ada nominal uang di text, itu adalah transaksi. Langsung parse, jangan tanya lagi!\n\nKembalikan JSON:\n{\n  \"reply\": \"pesan balasan untuk user (untuk greeting saja)\",\n  \"is_transaction\": true/false,\n  \"amount\": number atau null,\n  \"description\": \"deskripsi transaksi\" atau null,\n  \"category\": \"kategori\" atau null,\n  \"type\": \"income\" atau \"expense\" atau null\n}\n\nKategori yang tersedia:\n- Makan (untuk makanan, minuman, kopi, restoran, dll)\n- Transport (untuk bensin, parkir, ojek, taksi, service motor, dll)\n- Belanja (untuk belanja kebutuhan, pakaian, dll)\n- Hiburan (untuk bioskop, game, dll)\n- Kesehatan (untuk obat, dokter, dll)\n- Tagihan (untuk listrik, air, internet, dll)\n- Lainnya (untuk yang tidak jelas)\n\nContoh transaksi:\n- \"kopi 20k\" → amount: 20000, description: \"kopi\", category: \"Makan\", type: \"expense\"\n- \"makan siang 25rb\" → amount: 25000, description: \"makan siang\", category: \"Makan\", type: \"expense\"\n- \"service motor 150rb\" → amount: 150000, description: \"service motor\", category: \"Transport\", type: \"expense\"\n- \"gaji 5jt\" → amount: 5000000, description: \"gaji\", category: \"Lainnya\", type: \"income\"\n- \"bonus 500rb\" → amount: 500000, description: \"bonus\", category: \"Lainnya\", type: \"income\"\n\nKata kunci income: gaji, bonus, masuk, terima, dapat, saldo masuk, transfer masuk\nSelain itu = expense\n\nUntuk greeting, balas dengan gaya santai dan ramah. Gunakan emoji sesekali.`\n    },\n    {\n      role: 'user',\n      content: $json.text || 'halo'\n    }\n  ],\n  temperature: 0.1,\n  response_format: { type: 'json_object' }\n}) }}",
         "options": {
           "timeout": 15000
         }
@@ -118,13 +253,13 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        850,
+        1450,
         300
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Parse AI response - AI sudah buat reply dan parse transaksi\nconst mergedData = $('Merge Data').first().json || {};\nconst aiResponse = $json || {};\n\n// Parse AI response\nlet parsed = {};\ntry {\n  const content = aiResponse.choices?.[0]?.message?.content || '{}';\n  parsed = JSON.parse(content);\n  console.log('AI response:', JSON.stringify(parsed));\n} catch (e) {\n  console.log('Failed to parse AI response:', e);\n  // Fallback jika AI error\n  parsed = {\n    reply: `Halo ${mergedData.name || 'Kak'}! 👋\\n\\nMau catat apa hari ini?`,\n    is_transaction: false,\n    amount: null,\n    description: null,\n    type: null\n  };\n}\n\nconst phone = mergedData.phone || '';\nconst text = mergedData.text || '';\nconst name = mergedData.name || 'Kak';\nconst imageUrl = mergedData.image_url || null;\nconst imageId = mergedData.image_id || null;\nconst responseStyle = mergedData.response_style || 'santai';\n\n// Determine intent based on AI response\nlet intent = 'ai_reply'; // default: langsung kirim reply dari AI\n\n// Override jika ada image\nif (imageUrl || imageId) {\n  intent = 'image_upload';\n}\n// Jika ada transaksi, simpan dulu baru reply\nelse if (parsed.is_transaction && parsed.amount > 0) {\n  intent = 'save_transaction';\n}\n\nconsole.log('=== AI RESPONSE ===');\nconsole.log('Phone:', phone);\nconsole.log('Text:', text);\nconsole.log('Reply:', parsed.reply);\nconsole.log('Is Transaction:', parsed.is_transaction);\nconsole.log('Intent:', intent);\n\n// Return data dengan reply dari AI\nreturn [{ json: { \n  ...mergedData,\n  phone, \n  text, \n  name,\n  image_url: imageUrl, \n  image_id: imageId, \n  intent,\n  original_text: text,\n  response_style: responseStyle,\n  replyMessage: parsed.reply || `Halo ${name}! Mau catat apa hari ini?`,\n  parsed_amount: parsed.amount || null,\n  parsed_description: parsed.description || null,\n  parsed_category: parsed.category || 'Lainnya',\n  parsed_type: parsed.type || 'expense',\n  has_transaction: (parsed.is_transaction && parsed.amount > 0),\n  data: {\n    ...mergedData.api_data,\n    phone_number: phone,\n    name: name,\n    response_style: responseStyle\n  }\n} }];"
+        "jsCode": "// Parse AI response - AI sudah buat reply dan parse transaksi\nconst mergedData = $('Merge Data').first().json || {};\nconst aiResponse = $json || {};\n\n// Parse AI response\nlet parsed = {};\ntry {\n  const content = aiResponse.choices?.[0]?.message?.content || '{}';\n  parsed = JSON.parse(content);\n  console.log('AI response:', JSON.stringify(parsed));\n} catch (e) {\n  console.log('Failed to parse AI response:', e);\n  // Fallback jika AI error\n  parsed = {\n    reply: `Halo ${mergedData.name || 'Kak'}! 👋\\n\\nMau catat apa hari ini?`,\n    is_transaction: false,\n    amount: null,\n    description: null,\n    type: null\n  };\n}\n\nconst phone = mergedData.phone || '';\nconst text = mergedData.text || '';\nconst name = mergedData.name || 'Kak';\nconst imageUrl = mergedData.image_url || null;\nconst imageId = mergedData.image_id || null;\nconst responseStyle = mergedData.response_style || 'santai';\n\n// Determine intent based on AI response\nlet intent = 'ai_reply'; // default: langsung kirim reply dari AI\n\n// Override jika ada image (skip, sudah di-handle di flow lain)\nif (imageUrl || imageId) {\n  intent = 'skip_image_already_handled';\n}\n// Jika ada transaksi, LANGSUNG SIMPAN, jangan tanya lagi!\nelse if (parsed.is_transaction && parsed.amount > 0) {\n  intent = 'save_transaction';\n}\n\nconsole.log('=== AI RESPONSE ===');\nconsole.log('Phone:', phone);\nconsole.log('Text:', text);\nconsole.log('Reply:', parsed.reply);\nconsole.log('Is Transaction:', parsed.is_transaction);\nconsole.log('Intent:', intent);\n\n// Return data dengan reply dari AI\nreturn [{ json: { \n  ...mergedData,\n  phone, \n  text, \n  name,\n  image_url: imageUrl, \n  image_id: imageId, \n  intent,\n  original_text: text,\n  response_style: responseStyle,\n  replyMessage: parsed.reply || `Halo ${name}! Mau catat apa hari ini?`,\n  parsed_amount: parsed.amount || null,\n  parsed_description: parsed.description || null,\n  parsed_category: parsed.category || 'Lainnya',\n  parsed_type: parsed.type || 'expense',\n  has_transaction: (parsed.is_transaction && parsed.amount > 0),\n  data: {\n    ...mergedData.api_data,\n    phone_number: phone,\n    name: name,\n    response_style: responseStyle\n  }\n} }];"
       },
       "id": "detect-intent",
       "name": "Detect Intent",
@@ -187,6 +322,22 @@
               },
               "renameOutput": true,
               "outputKey": "ai_reply"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "skip_image_already_handled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "skip_image_already_handled"
             }
           ]
         },
@@ -681,7 +832,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'income'\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'income',\n  amount: $json.pending_upload_data?.extracted_data?.amount || $json.parsed_amount || null,\n  description: $json.pending_upload_data?.extracted_data?.description || $json.parsed_description || null,\n  tanggal: $json.pending_upload_data?.extracted_data?.tanggal || $json.parsed_tanggal || null\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -718,7 +869,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'expense'\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  phone_number: $json.phone || $json.phone_number || $json.data?.phone_number || '',\n  transaction_type: 'expense',\n  amount: $json.pending_upload_data?.extracted_data?.amount || $json.parsed_amount || null,\n  description: $json.pending_upload_data?.extracted_data?.description || $json.parsed_description || null,\n  tanggal: $json.pending_upload_data?.extracted_data?.tanggal || $json.parsed_tanggal || null\n}) }}",
         "options": {
           "retry": {
             "maxRetries": 2,
@@ -1098,7 +1249,7 @@
       "main": [
         [
           {
-            "node": "Detect Intent (AI)",
+            "node": "Check Pending Upload",
             "type": "main",
             "index": 0
           }
@@ -1146,6 +1297,13 @@
         [
           {
             "node": "Send AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response",
             "type": "main",
             "index": 0
           }
@@ -1493,6 +1651,67 @@
         [
           {
             "node": "Wait (Random Delay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Pending Upload": {
+      "main": [
+        [
+          {
+            "node": "Detect Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Route Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Confirm Income",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Confirm Expense",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Detect Intent (AI)",
             "type": "main",
             "index": 0
           }
