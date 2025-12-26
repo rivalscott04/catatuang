@@ -7,6 +7,7 @@
   import Svend3rBarChart from './lib/Svend3rBarChart.svelte';
   import Svend3rLineChart from './lib/Svend3rLineChart.svelte';
   import FinancialDataTable from './lib/FinancialDataTable.svelte';
+  import ExpenseDetailPage from './lib/ExpenseDetailPage.svelte';
   import { apiFetch } from './lib/api.js';
 
   const dispatch = createEventDispatcher();
@@ -19,6 +20,7 @@
   let financialTab = 'pemasukan'; // pemasukan, pengeluaran
   let refreshing = false;
   let sidebarOpen = false;
+  let expenseDetailView = null; // { userId, userName } or null
 
 
   async function getCsrfToken() {
@@ -386,28 +388,44 @@
         </div>
       {:else if activeTab === 'financial'}
         <div class="financial-tab">
-          <div class="tab-header">
-            <h1>Data Keuangan</h1>
-          </div>
-          
-          <div class="financial-tabs">
-            <button
-              class="financial-tab-btn"
-              class:active={financialTab === 'pemasukan'}
-              on:click={() => financialTab = 'pemasukan'}
-            >
-              Pemasukan
-            </button>
-            <button
-              class="financial-tab-btn"
-              class:active={financialTab === 'pengeluaran'}
-              on:click={() => financialTab = 'pengeluaran'}
-            >
-              Pengeluaran
-            </button>
-          </div>
-          
-          <FinancialDataTable activeTab={financialTab} />
+          {#if expenseDetailView}
+            <ExpenseDetailPage 
+              userId={expenseDetailView.userId} 
+              userName={expenseDetailView.userName}
+              on:back={() => expenseDetailView = null}
+            />
+          {:else}
+            <div class="tab-header">
+              <h1>Data Keuangan</h1>
+            </div>
+            
+            <div class="financial-tabs">
+              <button
+                class="financial-tab-btn"
+                class:active={financialTab === 'pemasukan'}
+                on:click={() => financialTab = 'pemasukan'}
+              >
+                Pemasukan
+              </button>
+              <button
+                class="financial-tab-btn"
+                class:active={financialTab === 'pengeluaran'}
+                on:click={() => financialTab = 'pengeluaran'}
+              >
+                Pengeluaran
+              </button>
+            </div>
+            
+            <FinancialDataTable 
+              activeTab={financialTab} 
+              on:view-detail={(e) => {
+                expenseDetailView = {
+                  userId: e.detail.userId,
+                  userName: e.detail.userName
+                };
+              }}
+            />
+          {/if}
         </div>
       {/if}
     </main>

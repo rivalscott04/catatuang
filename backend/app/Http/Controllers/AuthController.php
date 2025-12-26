@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -50,10 +51,41 @@ class AuthController extends Controller
                 ->withInput();
         }
 
-        // Check if user already exists
-        $existingUser = User::where('phone_number', $phoneNumber)->first();
-        
-        if ($existingUser) {
+        // Determine plan - default to 'free' if not provided or invalid
+        $plan = $request->plan ?? 'free';
+        if (!in_array($plan, ['free', 'pro', 'vip'])) {
+            $plan = 'free';
+        }
+
+        // Use database transaction to prevent race conditions
+        try {
+            $user = \Illuminate\Support\Facades\DB::transaction(function () use ($phoneNumber, $request, $plan) {
+                // Check if user already exists (with lock to prevent race condition)
+                $existingUser = User::where('phone_number', $phoneNumber)->lockForUpdate()->first();
+                
+                if ($existingUser) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        \Illuminate\Support\Facades\Validator::make([], [])
+                    );
+                }
+
+                // Create new user
+                $user = User::create([
+                    'phone_number' => $phoneNumber,
+                    'name' => $request->name,
+                    'plan' => $plan,
+                    'status' => 'active',
+                    'reminder_enabled' => true,
+                    'is_unlimited' => false,
+                ]);
+
+                // Initialize subscription for new user
+                $user->initializeSubscription($plan);
+
+                return $user;
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // User already exists
             $errorMessage = 'Nomor WhatsApp ini sudah terdaftar. Silakan gunakan nomor lain atau hubungi support.';
             
             // Handle JSON requests
@@ -67,26 +99,26 @@ class AuthController extends Controller
             return back()
                 ->withErrors(['phone_number' => $errorMessage])
                 ->withInput();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle duplicate key error (race condition or unique constraint violation)
+            if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'UNIQUE constraint')) {
+                $errorMessage = 'Nomor WhatsApp ini sudah terdaftar. Silakan gunakan nomor lain atau hubungi support.';
+                
+                // Handle JSON requests
+                if ($request->expectsJson() || $request->wantsJson()) {
+                    return response()->json([
+                        'message' => $errorMessage,
+                        'errors' => ['phone_number' => [$errorMessage]],
+                    ], 422);
+                }
+                
+                return back()
+                    ->withErrors(['phone_number' => $errorMessage])
+                    ->withInput();
+            }
+            // Re-throw if it's a different error
+            throw $e;
         }
-
-        // Determine plan - default to 'free' if not provided or invalid
-        $plan = $request->plan ?? 'free';
-        if (!in_array($plan, ['free', 'pro', 'vip'])) {
-            $plan = 'free';
-        }
-
-        // Create new user
-        $user = User::create([
-            'phone_number' => $phoneNumber,
-            'name' => $request->name,
-            'plan' => $plan,
-            'status' => 'active',
-            'reminder_enabled' => true,
-            'is_unlimited' => false,
-        ]);
-
-        // Initialize subscription for new user
-        $user->initializeSubscription($plan);
 
         // Return JSON response (frontend handles success display)
         return response()->json([

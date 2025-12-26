@@ -29,31 +29,58 @@ class UserController extends Controller
         $phone = $this->normalizePhoneNumber($request->input('phone_number'));
         $name = $request->input('name');
 
-        $wasRecentlyCreated = false;
-        $user = User::firstOrCreate(
-            ['phone_number' => $phone],
-            [
-                'name' => $name,
-                'plan' => 'free',
-                'status' => 'active',
-                'reminder_enabled' => true,
-                'is_unlimited' => false,
-                'response_style' => 'santai',
-            ]
-        );
-
-        // Check if user was just created
-        if ($user->wasRecentlyCreated) {
-            $wasRecentlyCreated = true;
-            // Initialize subscription for new user
-            $user->initializeSubscription('free');
-            $user->refresh();
+        if (!$phone) {
+            return $this->errorResponse('Invalid phone number', ['phone_number' => ['Phone number is required']], 422);
         }
 
-        // If user exists and name provided, update nullable name
-        if ($name && !$user->name) {
-            $user->update(['name' => $name]);
-        }
+        // Use database transaction to prevent race conditions
+        $user = DB::transaction(function () use ($phone, $name) {
+            // Try to find existing user first (with lock to prevent race condition)
+            $user = User::where('phone_number', $phone)->lockForUpdate()->first();
+
+            if ($user) {
+                // User exists, update name if provided and user has no name
+                if ($name && !$user->name) {
+                    $user->update(['name' => $name]);
+                    $user->refresh();
+                }
+                return $user;
+            }
+
+            // User doesn't exist, create new one
+            // Use try-catch to handle potential race condition if two requests come simultaneously
+            try {
+                $user = User::create([
+                    'phone_number' => $phone,
+                    'name' => $name,
+                    'plan' => 'free',
+                    'status' => 'active',
+                    'reminder_enabled' => true,
+                    'is_unlimited' => false,
+                    'response_style' => 'santai',
+                ]);
+
+                // Initialize subscription for new user
+                $user->initializeSubscription('free');
+                $user->refresh();
+
+                return $user;
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Handle duplicate key error (race condition)
+                // Error code 23000 is for integrity constraint violation (unique constraint)
+                if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'UNIQUE constraint')) {
+                    // Another request created the user, fetch it
+                    $user = User::where('phone_number', $phone)->first();
+                    if ($user && $name && !$user->name) {
+                        $user->update(['name' => $name]);
+                        $user->refresh();
+                    }
+                    return $user;
+                }
+                // Re-throw if it's a different error
+                throw $e;
+            }
+        });
 
         // Get limit info
         $chatLimit = $user->getChatLimit();

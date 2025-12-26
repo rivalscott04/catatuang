@@ -4,6 +4,10 @@
   import Toast from './Toast.svelte';
   import TableSkeleton from './TableSkeleton.svelte';
 
+  import { createEventDispatcher } from 'svelte';
+  
+  const dispatch = createEventDispatcher();
+  
   export let activeTab = 'pemasukan'; // 'pemasukan' or 'pengeluaran'
 
   let users = [];
@@ -84,6 +88,10 @@
     showToast = true;
   }
 
+  function handleViewDetail(userId, userName) {
+    dispatch('view-detail', { userId, userName });
+  }
+
   // Watch for activeTab changes and refetch data
   $: if (activeTab) {
     currentPage = 1;
@@ -129,6 +137,9 @@
               <th>Jumlah Transaksi</th>
             {/if}
             <th>Tanggal Daftar</th>
+            {#if activeTab === 'pengeluaran'}
+              <th>Action</th>
+            {/if}
           </tr>
         </thead>
         <tbody>
@@ -178,6 +189,17 @@
                 </td>
               {/if}
               <td>{formatDate(user.created_at)}</td>
+              {#if activeTab === 'pengeluaran'}
+                <td>
+                  <button 
+                    class="btn-detail" 
+                    on:click={() => handleViewDetail(user.id, user.name)}
+                    title="Lihat Detail Pengeluaran"
+                  >
+                    Detail
+                  </button>
+                </td>
+              {/if}
             </tr>
           {/each}
         </tbody>
@@ -240,6 +262,17 @@
               <span class="card-label">Tanggal Daftar:</span>
               <span>{formatDate(user.created_at)}</span>
             </div>
+            
+            {#if activeTab === 'pengeluaran'}
+              <div class="card-row">
+                <button 
+                  class="btn-detail btn-detail-mobile" 
+                  on:click={() => handleViewDetail(user.id, user.name)}
+                >
+                  Lihat Detail Pengeluaran
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
       {/each}
@@ -439,6 +472,29 @@
   .transaction-count {
     color: #64748b;
     font-size: 0.875rem;
+  }
+
+  .btn-detail {
+    padding: 0.5rem 1rem;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-detail:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  }
+
+  .btn-detail-mobile {
+    width: 100%;
+    margin-top: 0.5rem;
   }
 
   .empty-state {

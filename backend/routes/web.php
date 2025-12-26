@@ -32,6 +32,8 @@ Route::prefix('admin')->group(function () {
         
         // Financial Data API
         Route::get('/financial-data', [AdminDashboardController::class, 'financialData']);
+        Route::get('/users/{id}/expenses', [AdminDashboardController::class, 'getUserExpenses']);
+        Route::get('/users/{id}/expenses/pdf', [AdminDashboardController::class, 'generateExpensePdf']);
         
         // Pricing API
         Route::get('/pricing', [AdminPricingController::class, 'index']);

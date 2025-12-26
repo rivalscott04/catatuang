@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AdminDashboardController extends Controller
 {
@@ -360,6 +361,109 @@ class AdminDashboardController extends Controller
                 'total' => $users->total(),
             ],
         ]);
+    }
+
+    /**
+     * Get expense details for a specific user with month filter
+     */
+    public function getUserExpenses(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        $query = Transaction::where('user_id', $id)
+            ->where('type', 'expense');
+
+        if ($month) {
+            // Validate month format
+            if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+                $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+                $query->whereBetween('tanggal', [$startDate, $endDate]);
+            }
+        }
+
+        $expenses = $query->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $total = $expenses->sum('amount');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'expenses' => $expenses,
+                'total' => $total,
+                'month' => $month,
+            ],
+        ]);
+    }
+
+    /**
+     * Generate PDF for user expenses
+     */
+    public function generateExpensePdf(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        $query = Transaction::where('user_id', $id)
+            ->where('type', 'expense');
+
+        if ($month) {
+            // Validate month format
+            if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+                $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+                $query->whereBetween('tanggal', [$startDate, $endDate]);
+            }
+        }
+
+        $expenses = $query->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $total = $expenses->sum('amount');
+
+        // Format month for display
+        $monthDisplay = $month 
+            ? Carbon::createFromFormat('Y-m', $month)->format('F Y')
+            : 'Semua Waktu';
+
+        // Generate PDF using dompdf
+        try {
+            $pdf = Pdf::loadView('reports.expense-detail', [
+                'user' => $user,
+                'expenses' => $expenses,
+                'total' => $total,
+                'month' => $monthDisplay,
+            ]);
+
+            $filename = 'pengeluaran_' . str_replace(' ', '_', $user->name) . '_' . ($month ?: 'all') . '.pdf';
+            
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate PDF: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }
 
