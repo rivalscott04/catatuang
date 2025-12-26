@@ -205,6 +205,22 @@
               },
               "renameOutput": true,
               "outputKey": "skip_detect_intent"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "continue_normal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "continue_normal"
             }
           ]
         },
