@@ -39,4 +39,3 @@ return new class extends Migration {
         return array_key_exists($indexName, $indexes);
     }
 };
-
