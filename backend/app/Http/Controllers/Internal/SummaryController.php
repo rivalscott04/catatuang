@@ -110,11 +110,34 @@ class SummaryController extends Controller
     }
 
     /**
-     * Normalize phone number (remove + and spaces)
+     * Normalize phone number (same as UserController for consistency)
      */
     private function normalizePhoneNumber(string $phone): string
     {
-        return preg_replace('/[^0-9]/', '', $phone);
+        if (empty($phone)) {
+            return $phone;
+        }
+
+        // Remove spaces/dashes except leading +
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+
+        if (str_starts_with($phone, '+62')) {
+            return $phone;
+        }
+
+        if (str_starts_with($phone, '62')) {
+            return '+' . $phone;
+        }
+
+        if (str_starts_with($phone, '0')) {
+            return '+62' . substr($phone, 1);
+        }
+
+        if (str_starts_with($phone, '8')) {
+            return '+62' . $phone;
+        }
+
+        return $phone;
     }
 
     /**
