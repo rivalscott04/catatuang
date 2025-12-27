@@ -510,9 +510,6 @@
       {:else if activeTab === 'password'}
         <div class="password-tab">
           <Breadcrumb items={breadcrumbItems} />
-          <div class="tab-header">
-            <h1>Password Settings</h1>
-          </div>
           <PasswordSettings />
         </div>
       {:else if activeTab === 'financial'}

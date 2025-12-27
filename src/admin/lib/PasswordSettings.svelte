@@ -269,11 +269,6 @@
 </script>
 
 <div class="password-settings">
-  <div class="settings-header">
-    <h2>Pengaturan Akun</h2>
-    <p class="subtitle">Kelola username dan password Anda</p>
-  </div>
-
   <div class="settings-container">
     <!-- Username Change Section -->
     <div class="settings-card">
@@ -429,10 +424,6 @@
     margin: 0 auto;
   }
 
-  .settings-header {
-    margin-bottom: 2rem;
-  }
-
   .settings-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -487,20 +478,6 @@
     color: #64748b;
     margin-top: 0.5rem;
     line-height: 1.5;
-  }
-
-  .settings-header h2 {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.02em;
-  }
-
-  .subtitle {
-    color: #64748b;
-    font-size: 0.9375rem;
-    line-height: 1.6;
   }
 
   .password-form {
@@ -640,14 +617,6 @@
   }
 
   @media (max-width: 768px) {
-    .settings-header {
-      margin-bottom: 1.5rem;
-    }
-
-    .settings-header h2 {
-      font-size: 1.625rem;
-    }
-
     .settings-container {
       gap: 1.25rem;
     }
