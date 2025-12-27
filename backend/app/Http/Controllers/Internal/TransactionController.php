@@ -24,6 +24,7 @@ class TransactionController extends Controller
             'transactions.*.tanggal' => 'required|date',
             'transactions.*.amount' => 'required|integer',
             'transactions.*.description' => 'required|string|max:500',
+            'transactions.*.category' => 'nullable|string|max:50|in:Makan,Transport,Belanja,Hiburan,Kesehatan,Tagihan,Lainnya',
             'transactions.*.type' => 'required|in:income,expense',
             'transactions.*.source' => 'nullable|in:text,receipt',
         ]);
@@ -150,6 +151,7 @@ class TransactionController extends Controller
                     'tanggal' => $item['tanggal'],
                     'amount' => $item['amount'],
                     'description' => $item['description'],
+                    'category' => $item['category'] ?? 'Lainnya',
                     'type' => $item['type'],
                     'source' => $item['source'] ?? 'text',
                 ]);

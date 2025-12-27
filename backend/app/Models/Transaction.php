@@ -15,6 +15,7 @@ class Transaction extends Model
         'tanggal',
         'amount',
         'description',
+        'category',
         'type',
         'source',
     ];
