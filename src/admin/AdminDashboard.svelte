@@ -422,7 +422,8 @@
               on:view-detail={(e) => {
                 expenseDetailView = {
                   userId: e.detail.userId,
-                  userName: e.detail.userName
+                  userName: e.detail.userName,
+                  type: e.detail.type
                 };
               }}
             />
