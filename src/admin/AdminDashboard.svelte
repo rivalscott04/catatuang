@@ -591,8 +591,8 @@
   }
 
   .sidebar-item.active {
-    background: linear-gradient(90deg, #d1fae5 0%, #ffffff 100%);
-    color: #059669;
+    background: #34d399;
+    color: #ffffff;
     border-right: 3px solid #059669;
     font-weight: 600;
   }
@@ -897,7 +897,8 @@
 
     .sidebar-item.active {
       border-left-color: #059669;
-      background: #d1fae5;
+      background: #34d399;
+      color: #ffffff;
     }
 
     .sidebar-overlay {
