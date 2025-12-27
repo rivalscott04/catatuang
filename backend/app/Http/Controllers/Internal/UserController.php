@@ -43,8 +43,8 @@ class UserController extends Controller
                 ->first();
 
             if ($user) {
-                // User exists, update name if provided and user has no name
-                if ($name && !$user->name) {
+                // User exists, update name if provided (sync with latest from WA)
+                if ($name) {
                     $user->update(['name' => $name]);
                     $user->refresh();
                 }
@@ -77,7 +77,7 @@ class UserController extends Controller
                     $user = User::where('phone_number', $phone)
                         ->orderByRaw("FIELD(plan, 'vip', 'pro', 'free'), id desc")
                         ->first();
-                    if ($user && $name && !$user->name) {
+                    if ($user && $name) {
                         $user->update(['name' => $name]);
                         $user->refresh();
                     }
