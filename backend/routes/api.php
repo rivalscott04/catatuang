@@ -62,6 +62,7 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     
     // Upload endpoints
     Route::post('/uploads/create', [UploadController::class, 'create']);
+    Route::post('/uploads/download-image', [UploadController::class, 'downloadImage']);
     Route::post('/uploads/confirm', [UploadController::class, 'confirm']);
     Route::get('/uploads/pending', [UploadController::class, 'getPending']);
 });

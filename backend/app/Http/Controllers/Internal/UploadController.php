@@ -10,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class UploadController extends Controller
@@ -43,11 +45,33 @@ class UploadController extends Controller
             ->where('status', 'pending')
             ->update(['status' => 'cancelled']);
 
+        $imageUrl = $request->input('image_url');
+        $imagePath = $request->input('image_path');
+        $localImageUrl = null;
+
+        // Download and save image from GoWA if image_url is provided
+        if ($imageUrl && !$imagePath) {
+            try {
+                $localImagePath = $this->downloadAndSaveImage($imageUrl, $user->id);
+                if ($localImagePath) {
+                    $imagePath = $localImagePath;
+                    // Generate public URL for the saved image
+                    $localImageUrl = Storage::disk('public')->url($localImagePath);
+                }
+            } catch (\Exception $e) {
+                // Log error but don't fail the request
+                \Log::warning('Failed to download image from GoWA: ' . $e->getMessage(), [
+                    'image_url' => $imageUrl,
+                    'user_id' => $user->id,
+                ]);
+            }
+        }
+
         // Create new pending upload
         $pendingUpload = PendingUpload::create([
             'user_id' => $user->id,
-            'image_url' => $request->input('image_url'),
-            'image_path' => $request->input('image_path'),
+            'image_url' => $imageUrl,
+            'image_path' => $imagePath,
             'status' => 'pending',
             'extracted_data' => $request->input('extracted_data'),
             'expires_at' => now()->addMinutes(10), // TTL 10 minutes
@@ -57,6 +81,8 @@ class UploadController extends Controller
             'success' => true,
             'data' => [
                 'pending_upload_id' => $pendingUpload->id,
+                'image_url' => $localImageUrl ?: $imageUrl, // Return local URL if available, otherwise original
+                'image_path' => $imagePath,
                 'expires_at' => $pendingUpload->expires_at->toIso8601String(),
                 'response_style' => $user->response_style,
             ],
@@ -191,6 +217,63 @@ class UploadController extends Controller
     }
 
     /**
+     * POST /internal/uploads/download-image
+     * Download image from GoWA and return local URL (without creating pending upload)
+     * Used for OCR processing before deciding if confirmation is needed
+     */
+    public function downloadImage(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+            'image_url' => 'required|url|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        $imageUrl = $request->input('image_url');
+        $localImagePath = null;
+        $localImageUrl = null;
+
+        // Download and save image from GoWA
+        try {
+            $localImagePath = $this->downloadAndSaveImage($imageUrl, $user->id);
+            if ($localImagePath) {
+                // Generate public URL for the saved image
+                $localImageUrl = Storage::disk('public')->url($localImagePath);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to download image from GoWA', [
+                'image_url' => $imageUrl,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if (!$localImageUrl) {
+            // Fallback to original URL if download fails
+            $localImageUrl = $imageUrl;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'image_url' => $localImageUrl, // Local URL from backend
+                'image_path' => $localImagePath, // Local path for reference
+                'original_url' => $imageUrl, // Original GoWA URL
+            ],
+        ]);
+    }
+
+    /**
      * GET /internal/uploads/pending
      * Get pending upload for user
      */
@@ -238,16 +321,82 @@ class UploadController extends Controller
             ], 410);
         }
 
+        // Return local URL if available, otherwise original URL
+        $imageUrl = $pendingUpload->image_url;
+        if ($pendingUpload->image_path && Storage::disk('public')->exists($pendingUpload->image_path)) {
+            $imageUrl = Storage::disk('public')->url($pendingUpload->image_path);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
                 'pending_upload_id' => $pendingUpload->id,
-                'image_url' => $pendingUpload->image_url,
+                'image_url' => $imageUrl,
+                'image_path' => $pendingUpload->image_path,
                 'extracted_data' => $pendingUpload->extracted_data,
                 'expires_at' => $pendingUpload->expires_at->toIso8601String(),
                 'response_style' => $user->response_style,
             ],
         ]);
+    }
+
+    /**
+     * Download image from GoWA and save to local storage
+     * 
+     * @param string $imageUrl URL dari GoWA
+     * @param int $userId User ID untuk folder organization
+     * @return string|null Local path jika berhasil, null jika gagal
+     */
+    private function downloadAndSaveImage(string $imageUrl, int $userId): ?string
+    {
+        try {
+            // Download image from GoWA
+            $response = Http::timeout(30)->get($imageUrl);
+            
+            if (!$response->successful()) {
+                \Log::warning('Failed to download image from GoWA', [
+                    'url' => $imageUrl,
+                    'status' => $response->status(),
+                ]);
+                return null;
+            }
+
+            // Get image content
+            $imageContent = $response->body();
+            
+            // Determine file extension from URL or content type
+            $extension = 'jpg'; // default
+            $contentType = $response->header('Content-Type');
+            if ($contentType) {
+                if (str_contains($contentType, 'jpeg') || str_contains($contentType, 'jpg')) {
+                    $extension = 'jpg';
+                } elseif (str_contains($contentType, 'png')) {
+                    $extension = 'png';
+                } elseif (str_contains($contentType, 'webp')) {
+                    $extension = 'webp';
+                }
+            } else {
+                // Try to get from URL
+                $pathInfo = pathinfo(parse_url($imageUrl, PHP_URL_PATH));
+                if (isset($pathInfo['extension'])) {
+                    $extension = $pathInfo['extension'];
+                }
+            }
+
+            // Generate unique filename
+            $filename = 'uploads/' . $userId . '/' . uniqid('img_', true) . '.' . $extension;
+            
+            // Save to public storage
+            Storage::disk('public')->put($filename, $imageContent);
+            
+            return $filename;
+        } catch (\Exception $e) {
+            \Log::error('Error downloading image from GoWA', [
+                'url' => $imageUrl,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     /**
