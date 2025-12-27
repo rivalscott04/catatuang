@@ -55,6 +55,7 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     // Transaction endpoints (prepared for next step)
     Route::post('/transactions/batch', [TransactionController::class, 'batch']);
     Route::get('/summary/today', [SummaryController::class, 'today']);
+    Route::get('/summary/month-balance', [SummaryController::class, 'monthBalance']);
     
     // Report endpoints
     Route::post('/reports/pdf-expense-monthly', [ReportController::class, 'generateExpenseMonthlyPdf']);

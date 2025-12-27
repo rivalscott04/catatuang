@@ -4,35 +4,157 @@ namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class SummaryController extends Controller
 {
     /**
      * GET /internal/summary/today
-     * Return aggregate summary for today's transactions.
+     * Return total expense for today's transactions (for "rekap hari ini").
+     * Requires phone_number query parameter and active subscription.
      */
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+
+        // Get user
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check subscription active
+        if (!$user->isSubscriptionActive()) {
+            return $this->subscriptionExpiredResponse($user);
+        }
+
         $today = Carbon::now(config('app.timezone'))->toDateString();
 
-        $query = Transaction::whereDate('tanggal', $today);
+        // Query transactions for today, filtered by user
+        $query = $user->transactions()->whereDate('tanggal', $today);
 
-        $totalIncome = (clone $query)->where('type', 'income')->sum('amount');
         $totalExpense = (clone $query)->where('type', 'expense')->sum('amount');
-        $count = (clone $query)->count();
 
         return response()->json([
             'success' => true,
             'date' => $today,
             'data' => [
-                'transactions_count' => $count,
-                'total_income' => (int) $totalIncome,
                 'total_expense' => (int) $totalExpense,
-                'net' => (int) ($totalIncome - $totalExpense),
             ],
         ]);
+    }
+
+    /**
+     * GET /internal/summary/month-balance
+     * Return month balance (income - expense) for current month (for "saldo").
+     * Requires phone_number query parameter and active subscription.
+     */
+    public function monthBalance(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+
+        // Get user
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check subscription active
+        if (!$user->isSubscriptionActive()) {
+            return $this->subscriptionExpiredResponse($user);
+        }
+
+        $now = Carbon::now(config('app.timezone'));
+        $startOfMonth = $now->copy()->startOfMonth()->toDateString();
+        $endOfMonth = $now->copy()->endOfMonth()->toDateString();
+
+        // Query transactions for current month, filtered by user
+        $query = $user->transactions()
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+
+        $totalIncome = (clone $query)->where('type', 'income')->sum('amount');
+        $totalExpense = (clone $query)->where('type', 'expense')->sum('amount');
+        $net = $totalIncome - $totalExpense;
+
+        return response()->json([
+            'success' => true,
+            'period' => $now->locale('id')->isoFormat('MMMM YYYY'), // "Januari 2024"
+            'data' => [
+                'total_income' => (int) $totalIncome,
+                'total_expense' => (int) $totalExpense,
+                'net' => (int) $net,
+            ],
+        ]);
+    }
+
+    /**
+     * Normalize phone number (remove + and spaces)
+     */
+    private function normalizePhoneNumber(string $phone): string
+    {
+        return preg_replace('/[^0-9]/', '', $phone);
+    }
+
+    /**
+     * Error response helper
+     */
+    private function errorResponse(string $message, $errors, int $code): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'errors' => $errors,
+        ], $code);
+    }
+
+    /**
+     * Subscription expired response with response_style
+     */
+    private function subscriptionExpiredResponse(User $user): JsonResponse
+    {
+        $style = $user->response_style ?? 'santai';
+
+        $messages = [
+            'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa cek saldo!',
+            'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk menggunakan fitur ini.',
+            'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur ini.',
+            'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa cek saldo!',
+        ];
+
+        return response()->json([
+            'success' => false,
+            'message' => $messages[$style] ?? $messages['netral'],
+            'errors' => [
+                'subscription' => ['Subscription expired'],
+            ],
+            'data' => [
+                'current_plan' => $user->plan,
+                'response_style' => $style,
+                'reason' => 'subscription_expired',
+            ],
+        ], 403);
     }
 }
 
