@@ -58,6 +58,59 @@ class SummaryController extends Controller
     }
 
     /**
+     * GET /internal/summary/today-detail
+     * Return list of today's transactions with details (for "rekap detail").
+     * Requires phone_number query parameter and active subscription.
+     * Transactions are ordered by created_at DESC (newest first).
+     */
+    public function todayDetail(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+
+        // Get user
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check subscription active
+        if (!$user->isSubscriptionActive()) {
+            return $this->subscriptionExpiredResponse($user);
+        }
+
+        $today = Carbon::now(config('app.timezone'))->toDateString();
+
+        // Query transactions for today, filtered by user, ordered by created_at DESC (newest first)
+        $transactions = $user->transactions()
+            ->whereDate('tanggal', $today)
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'description', 'amount', 'type', 'category', 'tanggal', 'created_at']);
+
+        // Calculate totals
+        $totalExpense = $transactions->where('type', 'expense')->sum('amount');
+        $totalIncome = $transactions->where('type', 'income')->sum('amount');
+
+        return response()->json([
+            'success' => true,
+            'date' => $today,
+            'data' => [
+                'transactions' => $transactions,
+                'total_expense' => (int) $totalExpense,
+                'total_income' => (int) $totalIncome,
+            ],
+        ]);
+    }
+
+    /**
      * GET /internal/summary/month-balance
      * Return month balance (income - expense) for current month (for "saldo").
      * Requires phone_number query parameter and active subscription.
