@@ -8,6 +8,7 @@
   import Svend3rLineChart from './lib/Svend3rLineChart.svelte';
   import FinancialDataTable from './lib/FinancialDataTable.svelte';
   import ExpenseDetailPage from './lib/ExpenseDetailPage.svelte';
+  import Breadcrumb from './lib/Breadcrumb.svelte';
   import { apiFetch } from './lib/api.js';
 
   const dispatch = createEventDispatcher();
@@ -103,6 +104,130 @@
     // Clean up event listener
     document.removeEventListener('click', handleOutsideClick);
   });
+
+  // Icon SVG helpers
+  const homeIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+  </svg>`;
+
+  const dashboardIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="7"></rect>
+    <rect x="14" y="3" width="7" height="7"></rect>
+    <rect x="14" y="14" width="7" height="7"></rect>
+    <rect x="3" y="14" width="7" height="7"></rect>
+  </svg>`;
+
+  const usersIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+    <circle cx="9" cy="7" r="4"></circle>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </svg>`;
+
+  const pricingIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23"></line>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>`;
+
+  const passwordIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+  </svg>`;
+
+  const financialIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23"></line>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>`;
+
+  const pemasukanIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <polyline points="19 12 12 19 5 12"></polyline>
+  </svg>`;
+
+  const pengeluaranIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="19" x2="12" y2="5"></line>
+    <polyline points="5 12 12 5 19 12"></polyline>
+  </svg>`;
+
+  // Get breadcrumb items based on active tab
+  $: breadcrumbItems = (() => {
+    const baseItems = [
+      {
+        label: 'Home',
+        icon: homeIcon,
+        onClick: () => {
+          activeTab = 'dashboard';
+          sidebarOpen = false;
+        }
+      }
+    ];
+
+    switch (activeTab) {
+      case 'dashboard':
+        return [
+          ...baseItems,
+          {
+            label: 'Dashboard',
+            icon: dashboardIcon
+          }
+        ];
+      case 'users':
+        return [
+          ...baseItems,
+          {
+            label: 'Users',
+            icon: usersIcon
+          }
+        ];
+      case 'pricing':
+        return [
+          ...baseItems,
+          {
+            label: 'Pricing',
+            icon: pricingIcon
+          }
+        ];
+      case 'password':
+        return [
+          ...baseItems,
+          {
+            label: 'Password Settings',
+            icon: passwordIcon
+          }
+        ];
+      case 'financial':
+        if (expenseDetailView) {
+          return [
+            ...baseItems,
+            {
+              label: 'Data Keuangan',
+              icon: financialIcon,
+              onClick: () => {
+                expenseDetailView = null;
+              }
+            },
+            {
+              label: expenseDetailView.type === 'pemasukan' ? 'Detail Pemasukan' : 'Detail Pengeluaran',
+              icon: expenseDetailView.type === 'pemasukan' ? pemasukanIcon : pengeluaranIcon
+            }
+          ];
+        }
+        return [
+          ...baseItems,
+          {
+            label: 'Data Keuangan',
+            icon: financialIcon
+          },
+          {
+            label: financialTab === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran',
+            icon: financialTab === 'pemasukan' ? pemasukanIcon : pengeluaranIcon
+          }
+        ];
+      default:
+        return baseItems;
+    }
+  })();
 </script>
 
 <div class="admin-dashboard">
@@ -239,6 +364,7 @@
         </div>
       {:else if activeTab === 'dashboard'}
         <div class="dashboard-tab">
+          <Breadcrumb items={breadcrumbItems} />
           <div class="tab-header">
             <h1>Dashboard</h1>
             <button class="btn-refresh" on:click={refreshData} disabled={refreshing}>
@@ -367,6 +493,7 @@
         </div>
       {:else if activeTab === 'users'}
         <div class="users-tab">
+          <Breadcrumb items={breadcrumbItems} />
           <div class="tab-header">
             <h1>Users Management</h1>
           </div>
@@ -374,6 +501,7 @@
         </div>
       {:else if activeTab === 'pricing'}
         <div class="pricing-tab">
+          <Breadcrumb items={breadcrumbItems} />
           <div class="tab-header">
             <h1>Pricing Settings</h1>
           </div>
@@ -381,6 +509,7 @@
         </div>
       {:else if activeTab === 'password'}
         <div class="password-tab">
+          <Breadcrumb items={breadcrumbItems} />
           <div class="tab-header">
             <h1>Password Settings</h1>
           </div>
@@ -388,6 +517,7 @@
         </div>
       {:else if activeTab === 'financial'}
         <div class="financial-tab">
+          <Breadcrumb items={breadcrumbItems} />
           {#if expenseDetailView}
             <ExpenseDetailPage 
               userId={expenseDetailView.userId} 
