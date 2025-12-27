@@ -196,6 +196,7 @@
             <th>Tanggal</th>
             <th>Jumlah</th>
             <th>Deskripsi</th>
+            <th>Kategori</th>
             <th>Sumber</th>
           </tr>
         </thead>
@@ -208,6 +209,9 @@
                 {formatCurrency(transaction.amount)}
               </td>
               <td>{transaction.description || '-'}</td>
+              <td>
+                <span class="category-badge">{transaction.category || '-'}</span>
+              </td>
               <td>
                 <span class="source-badge">{transaction.source || '-'}</span>
               </td>
@@ -465,6 +469,16 @@
 
   .amount-cell.expense {
     color: #ef4444;
+  }
+
+  .category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
   .source-badge {

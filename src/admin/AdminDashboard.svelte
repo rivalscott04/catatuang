@@ -587,13 +587,13 @@
 
   .sidebar-item:hover {
     background: #f1f5f9;
-    color: #10b981;
+    color: #059669;
   }
 
   .sidebar-item.active {
-    background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%);
-    color: #10b981;
-    border-right: 3px solid #10b981;
+    background: linear-gradient(90deg, #d1fae5 0%, #ffffff 100%);
+    color: #059669;
+    border-right: 3px solid #059669;
     font-weight: 600;
   }
 
@@ -896,8 +896,8 @@
     }
 
     .sidebar-item.active {
-      border-left-color: #10b981;
-      background: #f0fdf4;
+      border-left-color: #059669;
+      background: #d1fae5;
     }
 
     .sidebar-overlay {

@@ -109,7 +109,6 @@
     <div class="info">
         <p><strong>Nama:</strong> {{ $user->name ?? $user->phone_number }}</p>
         <p><strong>Phone:</strong> {{ $user->phone_number }}</p>
-        <p><strong>Plan:</strong> {{ strtoupper($user->plan) }}</p>
         <p><strong>Periode:</strong> {{ $month }}</p>
     </div>
     
@@ -123,11 +122,11 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 10%;">No</th>
-                    <th style="width: 20%;">Tanggal</th>
-                    <th style="width: 40%;">Deskripsi</th>
-                    <th style="width: 15%;">Sumber</th>
-                    <th style="width: 15%;" class="amount">Jumlah</th>
+                    <th style="width: 8%;">No</th>
+                    <th style="width: 18%;">Tanggal</th>
+                    <th style="width: 35%;">Deskripsi</th>
+                    <th style="width: 19%;">Kategori</th>
+                    <th style="width: 20%;" class="amount">Jumlah</th>
                 </tr>
             </thead>
             <tbody>
@@ -136,7 +135,7 @@
                     <td style="text-align: center;">{{ $index + 1 }}</td>
                     <td>{{ \Carbon\Carbon::parse($expense->tanggal)->locale('id')->isoFormat('D MMM YYYY') }}</td>
                     <td>{{ $expense->description ?? '-' }}</td>
-                    <td>{{ $expense->source ?? '-' }}</td>
+                    <td>{{ $expense->category ?? '-' }}</td>
                     <td class="amount">Rp {{ number_format($expense->amount, 0, ',', '.') }}</td>
                 </tr>
                 @endforeach
