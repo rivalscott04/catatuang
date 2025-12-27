@@ -200,7 +200,7 @@ class AdminDashboardController extends Controller
         // Optimize: Only select needed columns and eager load if needed
         $users = $query->select([
             'id', 'name', 'phone_number', 'plan', 'status', 
-            'subscription_status', 'subscription_expires_at', 'is_unlimited', 'created_at'
+            'subscription_status', 'subscription_expires_at', 'is_unlimited', 'response_style', 'created_at'
         ])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -245,6 +245,34 @@ class AdminDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User plan updated successfully',
+            'data' => $user->fresh(),
+        ]);
+    }
+
+    /**
+     * Update user chat style (response_style)
+     */
+    public function updateChatStyle(Request $request, $id)
+    {
+        $request->validate([
+            'response_style' => 'required|in:santai,netral,formal,gaul',
+        ]);
+
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $user->response_style = $request->response_style;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Chat style updated successfully',
             'data' => $user->fresh(),
         ]);
     }

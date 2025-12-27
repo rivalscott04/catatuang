@@ -29,6 +29,7 @@
   let userToDelete = null;
   let deleting = false;
   let togglingUnlimited = false;
+  let updatingChatStyle = false;
 
   async function fetchUsers() {
     loading = true;
@@ -371,6 +372,52 @@
     }
   }
 
+  async function handleUpdateChatStyle(user, event) {
+    event.stopPropagation();
+    if (!user) return;
+    
+    const newStyle = event.target.value;
+    updatingChatStyle = true;
+    
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      const response = await apiFetch(`/admin/users/${user.id}/chat-style`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({ response_style: newStyle }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          showToastMessage('Chat style berhasil diupdate!', 'success');
+          await fetchUsers();
+        }
+      } else {
+        const error = await response.json();
+        showToastMessage(error.message || 'Gagal update chat style', 'error');
+        // Revert select value on error
+        event.target.value = user.response_style || 'santai';
+      }
+    } catch (error) {
+      console.error('Failed to update chat style:', error);
+      showToastMessage('Gagal update chat style', 'error');
+      // Revert select value on error
+      event.target.value = user.response_style || 'santai';
+    } finally {
+      updatingChatStyle = false;
+    }
+  }
+
   function showToastMessage(message, type = 'success') {
     toastMessage = message;
     toastType = type;
@@ -510,6 +557,7 @@
               Expires At
             </th>
             <th>Unlimited</th>
+            <th>Gaya Chat</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -587,6 +635,22 @@
                   />
                   <span class="toggle-slider"></span>
                 </label>
+              </td>
+              <td>
+                <div class="chat-style-cell">
+                  <select
+                    class="chat-style-select"
+                    value={user.response_style || 'santai'}
+                    on:change={(e) => handleUpdateChatStyle(user, e)}
+                    disabled={updatingChatStyle}
+                    title="Ubah style chat"
+                  >
+                    <option value="santai">Santai</option>
+                    <option value="netral">Netral</option>
+                    <option value="formal">Formal</option>
+                    <option value="gaul">Gaul</option>
+                  </select>
+                </div>
               </td>
               <td>
                 <div class="action-buttons">
@@ -720,6 +784,21 @@
                 />
                 <span class="toggle-slider"></span>
               </label>
+            </div>
+            
+            <div class="card-row">
+              <span class="card-label">Chat Style:</span>
+              <select
+                class="chat-style-select-mobile"
+                value={user.response_style || 'santai'}
+                on:change={(e) => handleUpdateChatStyle(user, e)}
+                disabled={updatingChatStyle}
+              >
+                <option value="santai">Santai</option>
+                <option value="netral">Netral</option>
+                <option value="formal">Formal</option>
+                <option value="gaul">Gaul</option>
+              </select>
             </div>
           </div>
         </div>
@@ -1777,6 +1856,72 @@
 
   .toggle-switch input:focus + .toggle-slider {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  }
+
+  /* Chat Style Select Styles */
+  .chat-style-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .chat-style-select {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+  }
+
+  .chat-style-select:hover:not(:disabled) {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .chat-style-select:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .chat-style-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f8fafc;
+  }
+
+  .chat-style-select-mobile {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+  }
+
+  .chat-style-select-mobile:hover:not(:disabled) {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .chat-style-select-mobile:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .chat-style-select-mobile:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f8fafc;
   }
 
   @media (max-width: 640px) {
