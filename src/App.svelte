@@ -549,8 +549,8 @@
               {@const buttonText = pricing.plan === 'free' ? 'Mulai Trial' : `Upgrade ke ${planName}`}
               
               <div class="pricing-card {isPro ? 'pro-card' : 'plain'}">
-                {#if isPro}
-                  <div class="popular-tag">Populer</div>
+                {#if pricing.badge_text}
+                  <div class="popular-tag">{pricing.badge_text}</div>
                 {/if}
                 <div class="card-header">
                   <h3 class="plan-name {isPro ? 'text-white' : ''}">{planName}</h3>

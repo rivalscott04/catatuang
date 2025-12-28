@@ -13,22 +13,13 @@ class PricingController extends Controller
     public function index()
     {
         try {
-            // Get all pricings and filter active ones
-            // Handle both boolean true and integer 1 for is_active
-            $allPricings = Pricing::all();
-            
-            $pricings = $allPricings
-                ->filter(function($pricing) {
-                    // Check if is_active is true (handle both boolean and integer)
-                    $isActive = $pricing->is_active;
-                    return $isActive === true || $isActive === 1 || $isActive === '1';
-                })
-                ->sortBy(function($pricing) {
-                    // Sort by plan order: free, pro, vip
-                    $order = ['free' => 1, 'pro' => 2, 'vip' => 3];
-                    return $order[$pricing->plan] ?? 999;
-                })
-                ->values()
+            // Get pricings that are active AND shown on main page
+            // Handle both boolean true and integer 1 for is_active and show_on_main
+            $pricings = Pricing::where('is_active', true)
+                ->where('show_on_main', true)
+                ->orderBy('display_order', 'asc')
+                ->orderBy('plan', 'asc')
+                ->get()
                 ->map(function ($pricing) {
                     // Ensure features is an array
                     $features = $pricing->features;
@@ -46,6 +37,7 @@ class PricingController extends Controller
                         'description' => $pricing->description ?? '',
                         'features' => $features,
                         'is_active' => (bool) $pricing->is_active,
+                        'badge_text' => $pricing->badge_text,
                     ];
                 });
 

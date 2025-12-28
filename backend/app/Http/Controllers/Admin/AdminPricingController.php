@@ -14,25 +14,31 @@ class AdminPricingController extends Controller
      */
     public function index()
     {
-        $pricings = Pricing::orderBy('plan')->get()->map(function ($pricing) {
-            // Ensure features is an array
-            $features = $pricing->features;
-            if (is_string($features)) {
-                $features = json_decode($features, true) ?? [];
-            }
-            if (!is_array($features)) {
-                $features = [];
-            }
-            
-            return [
-                'id' => $pricing->id,
-                'plan' => $pricing->plan,
-                'price' => $pricing->price,
-                'description' => $pricing->description,
-                'features' => $features,
-                'is_active' => $pricing->is_active,
-            ];
-        });
+        $pricings = Pricing::orderBy('display_order', 'asc')
+            ->orderBy('plan', 'asc')
+            ->get()
+            ->map(function ($pricing) {
+                // Ensure features is an array
+                $features = $pricing->features;
+                if (is_string($features)) {
+                    $features = json_decode($features, true) ?? [];
+                }
+                if (!is_array($features)) {
+                    $features = [];
+                }
+                
+                return [
+                    'id' => $pricing->id,
+                    'plan' => $pricing->plan,
+                    'price' => $pricing->price,
+                    'description' => $pricing->description,
+                    'features' => $features,
+                    'is_active' => $pricing->is_active,
+                    'display_order' => $pricing->display_order ?? 0,
+                    'show_on_main' => $pricing->show_on_main ?? true,
+                    'badge_text' => $pricing->badge_text,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -51,6 +57,9 @@ class AdminPricingController extends Controller
             'is_active' => 'boolean',
             'description' => 'nullable|string|max:255',
             'features' => 'nullable|array',
+            'display_order' => 'nullable|integer|min:0',
+            'show_on_main' => 'boolean',
+            'badge_text' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -67,6 +76,9 @@ class AdminPricingController extends Controller
             'is_active' => $request->input('is_active', true),
             'description' => $request->input('description'),
             'features' => $request->input('features', []),
+            'display_order' => $request->input('display_order', 0),
+            'show_on_main' => $request->input('show_on_main', true),
+            'badge_text' => $request->input('badge_text'),
         ]);
 
         return response()->json([
@@ -86,6 +98,9 @@ class AdminPricingController extends Controller
             'is_active' => 'boolean',
             'description' => 'nullable|string|max:255',
             'features' => 'nullable|array',
+            'display_order' => 'nullable|integer|min:0',
+            'show_on_main' => 'boolean',
+            'badge_text' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -113,6 +128,18 @@ class AdminPricingController extends Controller
 
         if ($request->has('features')) {
             $updateData['features'] = $request->input('features');
+        }
+
+        if ($request->has('display_order')) {
+            $updateData['display_order'] = $request->input('display_order', 0);
+        }
+
+        if ($request->has('show_on_main')) {
+            $updateData['show_on_main'] = $request->input('show_on_main', true);
+        }
+
+        if ($request->has('badge_text')) {
+            $updateData['badge_text'] = $request->input('badge_text');
         }
 
         $pricing->update($updateData);

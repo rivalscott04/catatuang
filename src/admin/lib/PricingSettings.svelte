@@ -21,6 +21,9 @@
     description: '',
     features: [],
     is_active: true,
+    display_order: 0,
+    show_on_main: true,
+    badge_text: '',
   };
   let creating = false;
   
@@ -90,6 +93,9 @@
           is_active: pricing.is_active,
           description: pricing.description,
           features: pricing.features || [],
+          display_order: parseInt(String(pricing.display_order || 0)),
+          show_on_main: pricing.show_on_main !== undefined ? pricing.show_on_main : true,
+          badge_text: pricing.badge_text || null,
         }),
       });
 
@@ -159,10 +165,13 @@
         headers: headers,
         body: JSON.stringify({
           plan: newPricing.plan.trim().toLowerCase(),
-          price: parseInt(newPricing.price) || 0,
+          price: parseInt(String(newPricing.price || 0)),
           is_active: newPricing.is_active,
           description: newPricing.description || '',
           features: newPricing.features || [],
+          display_order: parseInt(String(newPricing.display_order || 0)),
+          show_on_main: newPricing.show_on_main !== undefined ? newPricing.show_on_main : true,
+          badge_text: newPricing.badge_text || null,
         }),
       });
 
@@ -178,6 +187,9 @@
           description: '',
           features: [],
           is_active: true,
+          display_order: 0,
+          show_on_main: true,
+          badge_text: '',
         };
         // Refresh list
         await fetchPricings();
@@ -236,6 +248,9 @@
           is_active: editingPricing.is_active,
           description: editingPricing.description,
           features: editingPricing.features || [],
+          display_order: parseInt(String(editingPricing.display_order || 0)),
+          show_on_main: editingPricing.show_on_main !== undefined ? editingPricing.show_on_main : true,
+          badge_text: editingPricing.badge_text || null,
         }),
       });
 
@@ -352,17 +367,30 @@
       <table class="pricing-table">
         <thead>
           <tr>
+            <th>Urutan</th>
             <th>Plan</th>
             <th>Harga</th>
             <th>Deskripsi</th>
             <th>Fitur</th>
+            <th>Badge</th>
             <th>Status</th>
+            <th>Tampilkan</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
           {#each pricings as pricing}
             <tr>
+              <td class="order-cell">
+                <input
+                  type="number"
+                  class="order-input"
+                  bind:value={pricing.display_order}
+                  min="0"
+                  on:change={() => updatePricing(pricing)}
+                  on:blur={() => updatePricing(pricing)}
+                />
+              </td>
               <td class="plan-name-cell">
                 <strong>{pricing.plan?.toUpperCase() || 'N/A'}</strong>
               </td>
@@ -379,11 +407,28 @@
                   {pricing.features?.length || 0} fitur
                 </span>
               </td>
+              <td class="badge-cell">
+                {#if pricing.badge_text}
+                  <span class="badge-preview">{pricing.badge_text}</span>
+                {:else}
+                  <span class="badge-empty">-</span>
+                {/if}
+              </td>
               <td class="status-cell">
                 <label class="toggle-switch">
                   <input
                     type="checkbox"
                     bind:checked={pricing.is_active}
+                    on:change={() => updatePricing(pricing)}
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+              </td>
+              <td class="status-cell">
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    bind:checked={pricing.show_on_main}
                     on:change={() => updatePricing(pricing)}
                   />
                   <span class="toggle-slider"></span>
@@ -424,11 +469,25 @@
 
 <!-- Create Modal -->
 {#if showCreateModal}
-  <div class="modal-backdrop" on:click={() => showCreateModal = false}>
-    <div class="modal-content" on:click|stopPropagation>
+  <div 
+    class="modal-backdrop" 
+    role="button"
+    tabindex="0"
+    on:click={() => showCreateModal = false}
+    on:keydown={(e) => e.key === 'Escape' && (showCreateModal = false)}
+  >
+    <div 
+      class="modal-content" 
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-modal-title"
+      tabindex="-1"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
       <div class="modal-header">
-        <h2>Tambah Plan Baru</h2>
-        <button class="modal-close" on:click={() => showCreateModal = false}>×</button>
+        <h2 id="create-modal-title">Tambah Plan Baru</h2>
+        <button class="modal-close" on:click={() => showCreateModal = false} aria-label="Tutup modal">×</button>
       </div>
       
       <div class="modal-body">
@@ -491,6 +550,35 @@
         </div>
 
         <div class="form-group">
+          <label for="new-display-order">Urutan Tampil</label>
+          <input
+            id="new-display-order"
+            type="number"
+            bind:value={newPricing.display_order}
+            min="0"
+            step="1"
+            class="form-input"
+            placeholder="0"
+            disabled={creating}
+          />
+          <small class="form-hint">Angka lebih kecil akan tampil lebih dulu</small>
+        </div>
+
+        <div class="form-group">
+          <label for="new-badge-text">Badge Text (Opsional)</label>
+          <input
+            id="new-badge-text"
+            type="text"
+            bind:value={newPricing.badge_text}
+            class="form-input"
+            placeholder="contoh: Populer, Layak Dicoba, Terlaris"
+            maxlength="50"
+            disabled={creating}
+          />
+          <small class="form-hint">Teks yang akan muncul sebagai badge di kartu plan</small>
+        </div>
+
+        <div class="form-group">
           <label class="checkbox-label">
             <input
               type="checkbox"
@@ -498,6 +586,17 @@
               disabled={creating}
             />
             <span>Aktifkan plan ini</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={newPricing.show_on_main}
+              disabled={creating}
+            />
+            <span>Tampilkan di halaman utama</span>
           </label>
         </div>
       </div>
@@ -516,11 +615,25 @@
 
 <!-- Edit Modal -->
 {#if showEditModal && editingPricing}
-  <div class="modal-backdrop" on:click={closeEditModal}>
-    <div class="modal-content" on:click|stopPropagation>
+  <div 
+    class="modal-backdrop" 
+    role="button"
+    tabindex="0"
+    on:click={closeEditModal}
+    on:keydown={(e) => e.key === 'Escape' && closeEditModal()}
+  >
+    <div 
+      class="modal-content" 
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-modal-title"
+      tabindex="-1"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
       <div class="modal-header">
-        <h2>Edit Plan: {editingPricing.plan?.toUpperCase()}</h2>
-        <button class="modal-close" on:click={closeEditModal}>×</button>
+        <h2 id="edit-modal-title">Edit Plan: {editingPricing.plan?.toUpperCase()}</h2>
+        <button class="modal-close" on:click={closeEditModal} aria-label="Tutup modal">×</button>
       </div>
       
       <div class="modal-body">
@@ -567,12 +680,49 @@
         </div>
 
         <div class="form-group">
+          <label for="edit-display-order">Urutan Tampil</label>
+          <input
+            id="edit-display-order"
+            type="number"
+            bind:value={editingPricing.display_order}
+            min="0"
+            step="1"
+            class="form-input"
+            placeholder="0"
+          />
+          <small class="form-hint">Angka lebih kecil akan tampil lebih dulu</small>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-badge-text">Badge Text (Opsional)</label>
+          <input
+            id="edit-badge-text"
+            type="text"
+            bind:value={editingPricing.badge_text}
+            class="form-input"
+            placeholder="contoh: Populer, Layak Dicoba, Terlaris"
+            maxlength="50"
+          />
+          <small class="form-hint">Teks yang akan muncul sebagai badge di kartu plan</small>
+        </div>
+
+        <div class="form-group">
           <label class="checkbox-label">
             <input
               type="checkbox"
               bind:checked={editingPricing.is_active}
             />
             <span>Aktifkan plan ini</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={editingPricing.show_on_main}
+            />
+            <span>Tampilkan di halaman utama</span>
           </label>
         </div>
       </div>
@@ -591,11 +741,25 @@
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal && pricingToDelete}
-  <div class="modal-backdrop" on:click={closeDeleteModal}>
-    <div class="modal-content delete-modal" on:click|stopPropagation>
+  <div 
+    class="modal-backdrop" 
+    role="button"
+    tabindex="0"
+    on:click={closeDeleteModal}
+    on:keydown={(e) => e.key === 'Escape' && closeDeleteModal()}
+  >
+    <div 
+      class="modal-content delete-modal" 
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-modal-title"
+      tabindex="-1"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
       <div class="modal-header">
-        <h2>Hapus Plan</h2>
-        <button class="modal-close" on:click={closeDeleteModal}>×</button>
+        <h2 id="delete-modal-title">Hapus Plan</h2>
+        <button class="modal-close" on:click={closeDeleteModal} aria-label="Tutup modal">×</button>
       </div>
       
       <div class="modal-body">
@@ -750,6 +914,48 @@
     text-align: right;
   }
 
+  .order-cell {
+    text-align: center;
+    width: 80px;
+  }
+
+  .order-input {
+    width: 60px;
+    padding: 0.5rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .order-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #10b981);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .badge-cell {
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .badge-preview {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--color-primary, #10b981);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .badge-empty {
+    color: #94a3b8;
+    font-size: 0.875rem;
+  }
+
   .toggle-switch {
     position: relative;
     display: inline-block;
@@ -795,12 +1001,6 @@
     transform: translateX(24px);
   }
 
-  .pricing-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
   .form-group {
     display: flex;
     flex-direction: column;
@@ -844,21 +1044,6 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
   }
 
-  .description-input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: all 0.2s;
-  }
-
-  .description-input:focus {
-    outline: none;
-    border-color: var(--color-primary, #10b981);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-  }
-
   .features-textarea {
     width: 100%;
     padding: 12px 16px;
@@ -881,24 +1066,6 @@
     margin-top: 0.5rem;
     font-size: 0.75rem;
     color: var(--color-text-body, #475569);
-  }
-
-  .pricing-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  .current-price {
-    color: var(--color-text-body, #475569);
-    font-size: 0.9rem;
-  }
-
-  .current-price strong {
-    color: var(--color-text-heading, #0f172a);
-    font-size: 1.1rem;
   }
 
   .btn-save {
@@ -1020,6 +1187,11 @@
     justify-content: center;
     z-index: 1000;
     padding: 1rem;
+    outline: none;
+  }
+
+  .modal-backdrop:focus {
+    outline: none;
   }
 
   .modal-content {

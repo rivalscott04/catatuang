@@ -23,6 +23,9 @@ class PricingSeeder extends Seeder
                     '10 chat text /bulan',
                     'Upload struk (1/bulan)',
                 ],
+                'display_order' => 1,
+                'show_on_main' => true,
+                'badge_text' => null,
             ],
             [
                 'plan' => 'starter',
@@ -34,6 +37,9 @@ class PricingSeeder extends Seeder
                     'Upload struk (5/bulan)',
                     'Subscription 30 hari',
                 ],
+                'display_order' => 2,
+                'show_on_main' => true,
+                'badge_text' => 'Layak Dicoba',
             ],
             [
                 'plan' => 'pro',
@@ -47,6 +53,9 @@ class PricingSeeder extends Seeder
                     'Ringkasan & laporan bulanan',
                     'Subscription 30 hari',
                 ],
+                'display_order' => 3,
+                'show_on_main' => true,
+                'badge_text' => 'Best Seller',
             ],
             [
                 'plan' => 'vip',
@@ -61,6 +70,9 @@ class PricingSeeder extends Seeder
                     'Priority Support',
                     'Subscription 30 hari',
                 ],
+                'display_order' => 4,
+                'show_on_main' => true,
+                'badge_text' => null,
             ],
             [
                 'plan' => 'unlimited',
@@ -75,6 +87,9 @@ class PricingSeeder extends Seeder
                     'Priority Support',
                     'Tanpa batas waktu',
                 ],
+                'display_order' => 5,
+                'show_on_main' => false,
+                'badge_text' => null,
             ],
         ];
 

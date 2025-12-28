@@ -15,12 +15,17 @@ class Pricing extends Model
         'is_active',
         'description',
         'features',
+        'display_order',
+        'show_on_main',
+        'badge_text',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'is_active' => 'boolean',
         'features' => 'array',
+        'display_order' => 'integer',
+        'show_on_main' => 'boolean',
     ];
 
     /**
