@@ -41,6 +41,42 @@ class AdminPricingController extends Controller
     }
 
     /**
+     * Create new pricing
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'plan' => 'required|string|max:255|unique:pricings,plan',
+            'price' => 'required|integer|min:0',
+            'is_active' => 'boolean',
+            'description' => 'nullable|string|max:255',
+            'features' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $pricing = Pricing::create([
+            'plan' => $request->input('plan'),
+            'price' => $request->input('price'),
+            'is_active' => $request->input('is_active', true),
+            'description' => $request->input('description'),
+            'features' => $request->input('features', []),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pricing created successfully',
+            'data' => $pricing,
+        ], 201);
+    }
+
+    /**
      * Update pricing
      */
     public function update(Request $request, $id)
@@ -105,6 +141,38 @@ class AdminPricingController extends Controller
         return response()->json([
             'success' => true,
             'data' => $pricing,
+        ]);
+    }
+
+    /**
+     * Delete pricing
+     */
+    public function destroy($id)
+    {
+        $pricing = Pricing::find($id);
+
+        if (!$pricing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pricing not found',
+            ], 404);
+        }
+
+        // Prevent deletion of essential plans (optional safety check)
+        // You can remove this if you want full flexibility
+        $essentialPlans = ['free', 'pro', 'vip'];
+        if (in_array($pricing->plan, $essentialPlans)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete essential plans (free, pro, vip). You can deactivate them instead.',
+            ], 422);
+        }
+
+        $pricing->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pricing deleted successfully',
         ]);
     }
 }

@@ -31,16 +31,15 @@ class UnlimitedUsersSeeder extends Seeder
                 ['phone_number' => $userData['phone_number']],
                 [
                     'name' => $userData['name'],
-                    'plan' => 'vip',
+                    'plan' => 'unlimited',
                     'status' => 'active',
                     'reminder_enabled' => true,
-                    'is_unlimited' => true,
-                    'response_style' => 'santai',
+                    'response_style' => 'gaul',
                     'chat_count_month' => 0,
                     'struk_count_month' => 0,
                     'last_reset_at' => now()->toDateString(),
                     'subscription_started_at' => now()->toDateString(),
-                    'subscription_expires_at' => null, // No expiry for unlimited
+                    'subscription_expires_at' => null, // No expiry for unlimited plan
                     'subscription_status' => 'active',
                 ]
             );

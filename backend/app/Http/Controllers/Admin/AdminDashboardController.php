@@ -200,7 +200,7 @@ class AdminDashboardController extends Controller
         // Optimize: Only select needed columns and eager load if needed
         $users = $query->select([
             'id', 'name', 'phone_number', 'plan', 'status', 
-            'subscription_status', 'subscription_expires_at', 'is_unlimited', 'response_style', 'created_at'
+            'subscription_status', 'subscription_expires_at', 'response_style', 'created_at'
         ])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -277,51 +277,6 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    /**
-     * Toggle unlimited status for user
-     */
-    public function toggleUnlimited(Request $request, $id)
-    {
-        $request->validate([
-            'is_unlimited' => 'required|boolean',
-        ]);
-
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found',
-            ], 404);
-        }
-
-        $isUnlimited = $request->boolean('is_unlimited');
-        
-        // Update unlimited status
-        $user->is_unlimited = $isUnlimited;
-        
-        // If setting to unlimited, remove expiry date and set subscription to active
-        if ($isUnlimited) {
-            $today = now();
-            $user->subscription_started_at = $today->toDateString();
-            $user->subscription_expires_at = null; // No expiry for unlimited users
-            $user->subscription_status = 'active';
-        } else {
-            // If removing unlimited, reinitialize subscription based on current plan
-            // Save first to ensure is_unlimited is updated before initializeSubscription checks it
-            $user->save();
-            $user->refresh();
-            $user->initializeSubscription($user->plan);
-        }
-        
-        $user->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => $isUnlimited ? 'User set to unlimited successfully' : 'Unlimited status removed successfully',
-            'data' => $user->fresh(),
-        ]);
-    }
 
     /**
      * Get user details

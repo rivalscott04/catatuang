@@ -28,7 +28,6 @@
   let showDeleteModal = false;
   let userToDelete = null;
   let deleting = false;
-  let togglingUnlimited = false;
   let updatingChatStyle = false;
 
   async function fetchUsers() {
@@ -327,50 +326,6 @@
     }
   }
 
-  async function handleToggleUnlimited(user, event) {
-    event.stopPropagation();
-    if (!user) return;
-    
-    const newValue = !user.is_unlimited;
-    togglingUnlimited = true;
-    
-    try {
-      const csrfToken = await getCsrfToken();
-      const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-
-      if (csrfToken) {
-        headers['X-CSRF-TOKEN'] = csrfToken;
-      }
-
-      const response = await apiFetch(`/admin/users/${user.id}/unlimited`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify({ is_unlimited: newValue }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          showToastMessage(
-            newValue ? 'User di-set unlimited!' : 'Unlimited status dihapus!',
-            'success'
-          );
-          await fetchUsers();
-        }
-      } else {
-        const error = await response.json();
-        showToastMessage(error.message || 'Gagal toggle unlimited', 'error');
-      }
-    } catch (error) {
-      console.error('Failed to toggle unlimited:', error);
-      showToastMessage('Gagal toggle unlimited', 'error');
-    } finally {
-      togglingUnlimited = false;
-    }
-  }
 
   async function handleUpdateChatStyle(user, event) {
     event.stopPropagation();
@@ -556,7 +511,6 @@
             <th class="sortable" on:click={() => handleSort('expires_at')}>
               Expires At
             </th>
-            <th>Unlimited</th>
             <th>Gaya Chat</th>
             <th>Actions</th>
           </tr>
@@ -624,17 +578,6 @@
                 {:else}
                   <span class="badge badge-lifetime" title="Tidak ada expiry date">Lifetime</span>
                 {/if}
-              </td>
-              <td>
-                <label class="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={user.is_unlimited || false}
-                    on:change={(e) => handleToggleUnlimited(user, e)}
-                    disabled={togglingUnlimited}
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
               </td>
               <td>
                 <div class="chat-style-cell">
@@ -771,19 +714,6 @@
               {:else}
                 <span class="badge badge-lifetime">Lifetime</span>
               {/if}
-            </div>
-            
-            <div class="card-row">
-              <span class="card-label">Unlimited:</span>
-              <label class="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={user.is_unlimited || false}
-                  on:change={(e) => handleToggleUnlimited(user, e)}
-                  disabled={togglingUnlimited}
-                />
-                <span class="toggle-slider"></span>
-              </label>
             </div>
             
             <div class="card-row">

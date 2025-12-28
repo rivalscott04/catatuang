@@ -29,7 +29,6 @@ Route::prefix('admin')->group(function () {
         Route::get('/users/{id}', [AdminDashboardController::class, 'user']);
         Route::put('/users/{id}/plan', [AdminDashboardController::class, 'updateUserPlan']);
         Route::put('/users/{id}/chat-style', [AdminDashboardController::class, 'updateChatStyle']);
-        Route::put('/users/{id}/unlimited', [AdminDashboardController::class, 'toggleUnlimited']);
         Route::delete('/users/{id}', [AdminDashboardController::class, 'deleteUser']);
         
         // Financial Data API
@@ -41,8 +40,10 @@ Route::prefix('admin')->group(function () {
         
         // Pricing API
         Route::get('/pricing', [AdminPricingController::class, 'index']);
+        Route::post('/pricing', [AdminPricingController::class, 'store']);
         Route::get('/pricing/{plan}', [AdminPricingController::class, 'show']);
         Route::put('/pricing/{id}', [AdminPricingController::class, 'update']);
+        Route::delete('/pricing/{id}', [AdminPricingController::class, 'destroy']);
     });
 });
 

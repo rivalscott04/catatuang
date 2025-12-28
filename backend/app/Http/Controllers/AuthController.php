@@ -76,7 +76,6 @@ class AuthController extends Controller
                     'plan' => $plan,
                     'status' => 'active',
                     'reminder_enabled' => true,
-                    'is_unlimited' => false,
                 ]);
 
                 // Initialize subscription for new user

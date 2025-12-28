@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->string('category', 50)->nullable()->after('description');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('is_unlimited');
         });
     }
 
@@ -21,12 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->dropColumn('category');
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('is_unlimited')->default(false)->after('reminder_enabled');
         });
     }
 };
-
-
-
-

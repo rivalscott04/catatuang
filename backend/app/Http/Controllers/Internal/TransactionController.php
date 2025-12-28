@@ -64,7 +64,6 @@ class TransactionController extends Controller
                     'plan' => 'free',
                     'status' => 'active',
                     'reminder_enabled' => true,
-                    'is_unlimited' => false,
                     'response_style' => 'santai',
                 ]);
 

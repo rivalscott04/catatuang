@@ -16,7 +16,6 @@ class User extends Model
         'plan',
         'status',
         'reminder_enabled',
-        'is_unlimited',
         'response_style',
         'chat_count_month',
         'struk_count_month',
@@ -28,7 +27,6 @@ class User extends Model
 
     protected $casts = [
         'reminder_enabled' => 'boolean',
-        'is_unlimited' => 'boolean',
         'chat_count_month' => 'integer',
         'struk_count_month' => 'integer',
         'last_reset_at' => 'date',
@@ -78,15 +76,17 @@ class User extends Model
      */
     public function getChatLimit(): ?int
     {
-        // If user is unlimited, bypass all limits
-        if ($this->is_unlimited) {
+        // If user has unlimited plan, bypass all limits
+        if ($this->plan === 'unlimited') {
             return null;
         }
 
         return match ($this->plan) {
             'free' => 10,
-            'pro' => 200,
-            'vip' => null, // unlimited
+            'starter' => 20,
+            'pro' => 50,
+            'vip' => 100,
+            'unlimited' => null, // unlimited
             default => 10, // default to free limit
         };
     }
@@ -96,15 +96,17 @@ class User extends Model
      */
     public function getStrukLimit(): ?int
     {
-        // If user is unlimited, bypass all limits
-        if ($this->is_unlimited) {
+        // If user has unlimited plan, bypass all limits
+        if ($this->plan === 'unlimited') {
             return null;
         }
 
         return match ($this->plan) {
             'free' => 1,
-            'pro' => 50,
-            'vip' => 200,
+            'starter' => 5,
+            'pro' => 10,
+            'vip' => 20,
+            'unlimited' => null, // unlimited
             default => 1, // default to free limit
         };
     }
@@ -114,8 +116,8 @@ class User extends Model
      */
     public function canUseChat(): array
     {
-        // If user is unlimited, bypass all checks
-        if ($this->is_unlimited) {
+        // If user has unlimited plan, bypass all checks
+        if ($this->plan === 'unlimited') {
             return ['allowed' => true, 'remaining' => null, 'limit' => null, 'unlimited' => true];
         }
 
@@ -123,7 +125,7 @@ class User extends Model
         
         $limit = $this->getChatLimit();
         
-        // VIP or no limit
+        // Unlimited plan or no limit
         if ($limit === null) {
             return ['allowed' => true, 'remaining' => null, 'limit' => null];
         }
@@ -151,8 +153,8 @@ class User extends Model
      */
     public function canUseStruk(): array
     {
-        // If user is unlimited, bypass all checks
-        if ($this->is_unlimited) {
+        // If user has unlimited plan, bypass all checks
+        if ($this->plan === 'unlimited') {
             return ['allowed' => true, 'remaining' => null, 'limit' => null, 'unlimited' => true];
         }
 
@@ -160,7 +162,7 @@ class User extends Model
         
         $limit = $this->getStrukLimit();
         
-        // No limit
+        // Unlimited plan or no limit
         if ($limit === null) {
             return ['allowed' => true, 'remaining' => null, 'limit' => null];
         }
@@ -208,11 +210,11 @@ class User extends Model
     {
         $today = now();
         
-        // If user is unlimited, set no expiry date
-        if ($this->is_unlimited) {
+        // If user has unlimited plan, set no expiry date
+        if ($plan === 'unlimited') {
             $this->update([
                 'subscription_started_at' => $today->toDateString(),
-                'subscription_expires_at' => null, // No expiry for unlimited users
+                'subscription_expires_at' => null, // No expiry for unlimited plan
                 'subscription_status' => 'active',
             ]);
             return;
@@ -225,8 +227,8 @@ class User extends Model
                 'subscription_expires_at' => $today->copy()->addDays(3)->toDateString(),
                 'subscription_status' => 'active',
             ]);
-        } elseif (in_array($plan, ['pro', 'vip'])) {
-            // Pro/VIP: 30 days subscription
+        } elseif (in_array($plan, ['starter', 'pro', 'vip'])) {
+            // Starter/Pro/VIP: 30 days subscription
             $this->update([
                 'subscription_started_at' => $today->toDateString(),
                 'subscription_expires_at' => $today->copy()->addDays(30)->toDateString(),
@@ -296,14 +298,14 @@ class User extends Model
             ];
         }
 
-        // Check plan: must be pro or vip
-        if (!in_array($this->plan, ['pro', 'vip'])) {
+        // Check plan: must be vip (or unlimited)
+        if (!in_array($this->plan, ['vip', 'unlimited'])) {
             return [
                 'allowed' => false,
                 'reason' => 'plan_not_supported',
-                'message' => 'Fitur PDF report hanya tersedia untuk plan Pro dan VIP. Upgrade plan Anda untuk mengakses fitur ini.',
+                'message' => 'Fitur PDF/CSV report hanya tersedia untuk plan VIP dan Unlimited. Upgrade plan Anda untuk mengakses fitur ini.',
                 'current_plan' => $this->plan,
-                'required_plans' => ['pro', 'vip'],
+                'required_plans' => ['vip', 'unlimited'],
             ];
         }
 
