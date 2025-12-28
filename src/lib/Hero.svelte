@@ -22,7 +22,6 @@
       </p>
 
       <div class="urgency-badge">
-        <span class="badge-icon">⚡</span>
         <span>Trial gratis 3 hari - Mulai sekarang</span>
       </div>
 
@@ -192,29 +191,15 @@
   .urgency-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    color: #92400e;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
     padding: 10px 16px;
     border-radius: 8px;
     font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 4px rgba(146, 64, 14, 0.1);
-  }
-
-  .badge-icon {
-    font-size: 1.1rem;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.1);
-    }
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.2);
   }
 
   /* Visual Column */
