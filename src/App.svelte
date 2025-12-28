@@ -394,6 +394,9 @@
     {:else}
       <Hero {openRegisterModal} />
 
+      <!-- Section Divider -->
+      <div class="section-divider"></div>
+
       <section id="features" class="section">
       <div class="container">
         <h2>
@@ -549,6 +552,9 @@
       </div>
     </section>
 
+    <!-- Section Divider -->
+    <div class="section-divider"></div>
+
     <!-- Testimonials Section -->
     <section id="testimonials" class="section alt-bg">
       <div class="container message-container">
@@ -644,6 +650,9 @@
       </div>
     </section>
 
+    <!-- Section Divider -->
+    <div class="section-divider"></div>
+
     <!-- Pricing Section -->
     <section id="pricing" class="section">
       <div class="container pl-container">
@@ -664,7 +673,7 @@
             <p>Tidak ada data pricing tersedia</p>
           </div>
         {:else}
-          <div class="pricing-wrapper three-col">
+          <div class="pricing-wrapper four-col">
             {#each pricings as pricing}
               {@const isPro = pricing.plan === 'pro'}
               {@const isFree = pricing.plan === 'free'}
@@ -729,7 +738,10 @@
       </div>
     </section>
 
-    <section id="faq" class="section">
+    <!-- Section Divider -->
+    <div class="section-divider"></div>
+
+    <section id="faq" class="section alt-bg">
       <div class="container narrow-container">
         <h2>Sering Ditanyakan</h2>
         <div class="faq-grid">
@@ -1365,14 +1377,41 @@
   }
 
   .section {
-    padding: 4rem 0;
-    border-top: 1px solid #f1f5f9;
+    padding: 6rem 0;
+    position: relative;
   }
 
-  /* First section needs no top border usually, but let's keep it for consistency or remove */
+  /* Section Divider - Clean & Modern */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(16, 185, 129, 0.2) 20%,
+      rgba(16, 185, 129, 0.3) 50%,
+      rgba(16, 185, 129, 0.2) 80%,
+      transparent 100%
+    );
+    margin: 0;
+    position: relative;
+  }
+
+  .section-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 1px;
+    background: var(--color-primary);
+    opacity: 0.6;
+  }
+
+  /* First section needs no top border */
   #features {
     border-top: none;
-  } /* Assuming Hero flows into Features, or Features is first content block */
+  }
 
   .alt-bg {
     /* Subtle Minty Gradient */
@@ -1512,9 +1551,6 @@
     background: #fff;
     border-radius: 24px;
     width: 100%;
-    flex: 1;
-    min-width: 280px;
-    max-width: 360px;
     position: relative;
     border: 1px solid #e2e8f0;
     display: flex;
@@ -1957,14 +1993,21 @@
   }
 
   /* Pricing Revisions */
-  .pricing-wrapper.three-col {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    flex-wrap: wrap;
+  .pricing-wrapper.four-col {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1400px;
+    margin: 0 auto;
     align-items: stretch;
+  }
+
+  @media (max-width: 1200px) {
+    .pricing-wrapper.four-col {
+      grid-template-columns: repeat(2, 1fr);
+      max-width: 800px;
+    }
   }
 
   .pricing-card.pro-card {
@@ -2044,8 +2087,17 @@
     .feature-card {
       padding: 1.5rem;
     }
+    .pricing-wrapper.four-col {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
     .pricing-card {
       max-width: 100%;
+    }
+    
+    .section {
+      padding: 4rem 0;
     }
     
     /* Footer mobile fixes */
