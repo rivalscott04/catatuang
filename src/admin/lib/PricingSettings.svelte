@@ -27,6 +27,10 @@
   // Delete confirmation modal state
   let showDeleteModal = false;
   let pricingToDelete = null;
+  
+  // Edit modal state
+  let showEditModal = false;
+  let editingPricing = null;
 
   async function getCsrfToken() {
     try {
@@ -199,6 +203,76 @@
     showDeleteModal = false;
   }
 
+  function openEditModal(pricing) {
+    editingPricing = JSON.parse(JSON.stringify(pricing)); // Deep copy
+    showEditModal = true;
+  }
+
+  function closeEditModal() {
+    editingPricing = null;
+    showEditModal = false;
+  }
+
+  async function saveEditPricing() {
+    if (!editingPricing) return;
+    
+    saving[editingPricing.id] = true;
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+      }
+
+      const response = await apiFetch(`/admin/pricing/${editingPricing.id}`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({
+          price: parseInt(editingPricing.price),
+          is_active: editingPricing.is_active,
+          description: editingPricing.description,
+          features: editingPricing.features || [],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Update local state
+        const index = pricings.findIndex(p => p.id === editingPricing.id);
+        if (index !== -1) {
+          pricings[index] = { ...pricings[index], ...data.data };
+        }
+        dispatch('updated');
+        
+        showToastMessage('Perubahan berhasil disimpan!', 'success');
+        
+        // Trigger refresh di halaman utama dengan custom event
+        const event = new CustomEvent('pricing-updated', { 
+          detail: { pricingId: editingPricing.id, plan: editingPricing.plan },
+          bubbles: true 
+        });
+        window.dispatchEvent(event);
+        
+        // Also try localStorage event as fallback (works across tabs)
+        localStorage.setItem('pricing-updated', Date.now().toString());
+        
+        closeEditModal();
+      } else {
+        showToastMessage(data.message || 'Gagal mengupdate harga', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to update pricing:', error);
+      showToastMessage('Terjadi kesalahan saat mengupdate harga', 'error');
+    } finally {
+      saving[editingPricing.id] = false;
+    }
+  }
+
   async function deletePricing() {
     if (!pricingToDelete) return;
 
@@ -274,96 +348,76 @@
         Tambah Plan Baru
       </button>
     </div>
-    <div class="pricing-list">
-      {#each pricings as pricing}
-        <div class="pricing-card">
-          <div class="pricing-header">
-            <div>
-              <h3 class="plan-name">{pricing.plan?.toUpperCase() || 'N/A'}</h3>
-              <p class="plan-description">{pricing.description || '-'}</p>
-            </div>
-            <label class="toggle-switch">
-              <input
-                type="checkbox"
-                bind:checked={pricing.is_active}
-                on:change={() => updatePricing(pricing)}
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="pricing-form">
-            <div class="form-group">
-              <label for="price-{pricing.id}">Harga (Rupiah)</label>
-              <div class="price-input-wrapper">
-                <span class="currency-prefix">Rp</span>
-                <input
-                  id="price-{pricing.id}"
-                  type="number"
-                  bind:value={pricing.price}
-                  min="0"
-                  step="1000"
-                  class="price-input"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="description-{pricing.id}">Deskripsi</label>
-              <input
-                id="description-{pricing.id}"
-                type="text"
-                bind:value={pricing.description}
-                class="description-input"
-                placeholder="Deskripsi plan"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="features-{pricing.id}">Fitur (satu per baris)</label>
-              <textarea
-                id="features-{pricing.id}"
-                class="features-textarea"
-                placeholder="Masukkan fitur, satu per baris&#10;Contoh:&#10;200 chat text /bulan&#10;Upload struk otomatis (50/bulan)"
-                value={Array.isArray(pricing.features) ? pricing.features.join('\n') : ''}
-                on:input={(e) => {
-                  const target = e.currentTarget;
-                  const text = target.value;
-                  pricing.features = text ? text.split('\n').filter(f => f.trim()) : [];
-                }}
-              ></textarea>
-              <small class="form-hint">Setiap baris akan menjadi satu fitur</small>
-            </div>
-
-            <div class="pricing-actions">
-              <div class="current-price">
-                Harga saat ini: <strong>{formatPrice(pricing.price)}</strong>
-              </div>
-              <div class="action-buttons">
-                <button
-                  class="btn-save"
-                  on:click={() => updatePricing(pricing)}
-                  disabled={saving[pricing.id]}
-                >
-                  {saving[pricing.id] ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </button>
-                <button
-                  class="btn-delete"
-                  on:click={() => openDeleteModal(pricing)}
-                  disabled={deleting[pricing.id]}
-                  title="Hapus Plan"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      {/each}
+    <div class="pricing-table-container">
+      <table class="pricing-table">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Harga</th>
+            <th>Deskripsi</th>
+            <th>Fitur</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each pricings as pricing}
+            <tr>
+              <td class="plan-name-cell">
+                <strong>{pricing.plan?.toUpperCase() || 'N/A'}</strong>
+              </td>
+              <td class="price-cell">
+                {formatPrice(pricing.price)}
+              </td>
+              <td class="description-cell">
+                <span class="description-text" title={pricing.description || '-'}>
+                  {pricing.description || '-'}
+                </span>
+              </td>
+              <td class="features-cell">
+                <span class="features-count">
+                  {pricing.features?.length || 0} fitur
+                </span>
+              </td>
+              <td class="status-cell">
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    bind:checked={pricing.is_active}
+                    on:change={() => updatePricing(pricing)}
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+              </td>
+              <td class="actions-cell">
+                <div class="action-buttons">
+                  <button
+                    class="btn-edit"
+                    on:click={() => openEditModal(pricing)}
+                    title="Edit Plan"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    class="btn-delete"
+                    on:click={() => openDeleteModal(pricing)}
+                    disabled={deleting[pricing.id]}
+                    title="Hapus Plan"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {/if}
 </div>
@@ -460,6 +514,81 @@
   </div>
 {/if}
 
+<!-- Edit Modal -->
+{#if showEditModal && editingPricing}
+  <div class="modal-backdrop" on:click={closeEditModal}>
+    <div class="modal-content" on:click|stopPropagation>
+      <div class="modal-header">
+        <h2>Edit Plan: {editingPricing.plan?.toUpperCase()}</h2>
+        <button class="modal-close" on:click={closeEditModal}>×</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-price">Harga (Rupiah)</label>
+          <div class="price-input-wrapper">
+            <span class="currency-prefix">Rp</span>
+            <input
+              id="edit-price"
+              type="number"
+              bind:value={editingPricing.price}
+              min="0"
+              step="1000"
+              class="price-input"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-description">Deskripsi</label>
+          <input
+            id="edit-description"
+            type="text"
+            bind:value={editingPricing.description}
+            class="form-input"
+            placeholder="Deskripsi plan"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="edit-features">Fitur (satu per baris)</label>
+          <textarea
+            id="edit-features"
+            class="features-textarea"
+            placeholder="Masukkan fitur, satu per baris&#10;Contoh:&#10;200 chat text /bulan&#10;Upload struk otomatis (50/bulan)"
+            value={Array.isArray(editingPricing.features) ? editingPricing.features.join('\n') : ''}
+            on:input={(e) => {
+              const text = e.currentTarget.value;
+              editingPricing.features = text ? text.split('\n').filter(f => f.trim()) : [];
+            }}
+          ></textarea>
+          <small class="form-hint">Setiap baris akan menjadi satu fitur</small>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={editingPricing.is_active}
+            />
+            <span>Aktifkan plan ini</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" on:click={closeEditModal} disabled={saving[editingPricing.id]}>
+          Batal
+        </button>
+        <button class="btn-save" on:click={saveEditPricing} disabled={saving[editingPricing.id]}>
+          {saving[editingPricing.id] ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal && pricingToDelete}
   <div class="modal-backdrop" on:click={closeDeleteModal}>
@@ -527,43 +656,98 @@
     }
   }
 
-  .pricing-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+  .pricing-table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
   }
 
-  .pricing-card {
-    border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: all 0.2s;
+  .pricing-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
   }
 
-  .pricing-card:hover {
-    border-color: var(--color-primary, #10b981);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+  .pricing-table thead {
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
   }
 
-  .pricing-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .plan-name {
-    font-size: 1.5rem;
-    font-weight: 700;
+  .pricing-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
     color: var(--color-text-heading, #0f172a);
-    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .plan-description {
+  .pricing-table tbody tr {
+    border-bottom: 1px solid #e2e8f0;
+    transition: background 0.2s;
+  }
+
+  .pricing-table tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  .pricing-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .pricing-table td {
+    padding: 1rem;
+    vertical-align: middle;
+  }
+
+  .plan-name-cell {
+    font-weight: 600;
+    color: var(--color-text-heading, #0f172a);
+  }
+
+  .plan-name-cell strong {
+    font-size: 1rem;
+  }
+
+  .price-cell {
+    font-weight: 600;
+    color: var(--color-text-heading, #0f172a);
+    font-size: 1rem;
+  }
+
+  .description-cell {
+    max-width: 300px;
+  }
+
+  .description-text {
+    display: block;
     color: var(--color-text-body, #475569);
     font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .features-cell {
+    color: var(--color-text-body, #475569);
+    font-size: 0.875rem;
+  }
+
+  .features-count {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #f1f5f9;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  .status-cell {
+    text-align: center;
+  }
+
+  .actions-cell {
+    text-align: right;
   }
 
   .toggle-switch {
@@ -775,16 +959,36 @@
 
   .action-buttons {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     align-items: center;
+    justify-content: flex-end;
+  }
+
+  .btn-edit {
+    padding: 0.5rem;
+    background: var(--color-primary, #10b981);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-edit:hover {
+    background: var(--color-primary-hover, #059669);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
   }
 
   .btn-delete {
-    padding: 0.75rem;
+    padding: 0.5rem;
     background: #ef4444;
     color: #fff;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -795,7 +999,7 @@
   .btn-delete:hover:not(:disabled) {
     background: #dc2626;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
   }
 
   .btn-delete:disabled {
@@ -988,24 +1192,22 @@
       justify-content: center;
     }
 
-    .pricing-header {
-      flex-direction: column;
-      gap: 1rem;
+    .pricing-table-container {
+      overflow-x: auto;
     }
 
-    .pricing-actions {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: stretch;
+    .pricing-table {
+      min-width: 800px;
     }
 
-    .action-buttons {
-      flex-direction: column;
+    .pricing-table th,
+    .pricing-table td {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.875rem;
     }
 
-    .btn-save,
-    .btn-delete {
-      width: 100%;
+    .description-cell {
+      max-width: 150px;
     }
 
     .modal-content {
