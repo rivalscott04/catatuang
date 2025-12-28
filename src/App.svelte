@@ -48,6 +48,7 @@
   let botNumber = "6281234567890"; // Default, akan diambil dari API saat mount
   let pricings = [];
   let pricingLoading = true;
+  let openFaqIndex = null; // For FAQ accordion
 
   // Function to fetch pricing data
   async function fetchPricing() {
@@ -202,6 +203,10 @@
     showSuccessModal = false;
     document.body.style.overflow = "";
     registeredPhone = "";
+  }
+
+  function toggleFaq(index) {
+    openFaqIndex = openFaqIndex === index ? null : index;
   }
 
   function getPlanName(plan) {
@@ -394,7 +399,7 @@
         <h2>
           Pintar Atur Uang.<br /><span class="highlight">Tanpa Ribet.</span>
         </h2>
-        <div class="grid-3">
+        <div class="features-grid">
           <div class="feature-card">
             <div class="icon-box">
               <svg
@@ -413,7 +418,8 @@
             <h3>Pencatatan Instan</h3>
             <p>
               Cukup ketik "Makan 20rb" atau "Gaji 5jt", bot langsung mencatat
-              detiknya juga. Semudah chatting dengan teman.
+              detiknya juga. Catat beberapa transaksi sekaligus dalam satu pesan. 
+              Bot otomatis mengenali kategori: Makan, Transport, Tagihan, dll.
             </p>
           </div>
           <div class="feature-card">
@@ -441,8 +447,9 @@
             </div>
             <h3>Laporan Harian</h3>
             <p>
-              Setiap malam, dapatkan ringkasan pemasukan & pengeluaran. Langsung
-              tahu sisa saldo tanpa perlu buka aplikasi banking.
+              Setiap malam, dapatkan ringkasan pemasukan & pengeluaran. Cek saldo 
+              real-time kapan saja dengan chat "saldo". Lihat rekap detail dengan 
+              list transaksi lengkap hari ini.
             </p>
           </div>
           <div class="feature-card">
@@ -460,10 +467,82 @@
                 /></svg
               >
             </div>
-            <h3>Analisis Cerdas</h3>
+            <h3>OCR Otomatis</h3>
             <p>
-              Kategori otomatis mendeteksi kebutuhan vs keinginan. Pantau
-              kesehatan finansialmu dengan grafik visual yang simpel.
+              Kirim foto struk, bot langsung ekstrak nominal dan deskripsi. Tidak perlu ketik manual, hemat waktu dan lebih akurat.
+            </p>
+          </div>
+          <div class="feature-card feature-highlight">
+            <div class="icon-box icon-highlight">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-8 h-8"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path
+                  d="M13.73 21a2 2 0 0 1-3.46 0"
+                /></svg
+              >
+            </div>
+            <div class="feature-badge">Fitur Unik</div>
+            <h3>Reminder Pintar</h3>
+            <p>
+              Dapatkan pengingat harian jika belum mencatat transaksi hari ini. 
+              Bisa nyalakan/matikan kapan saja via chat. Tidak mengganggu, hanya 
+              mengingatkan saat diperlukan.
+            </p>
+          </div>
+          <div class="feature-card feature-highlight">
+            <div class="icon-box icon-highlight">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-8 h-8"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
+                  cx="12"
+                  cy="7"
+                  r="4"
+                /></svg
+              >
+            </div>
+            <div class="feature-badge">Fitur Unik</div>
+            <h3>Gaya Chat Personal</h3>
+            <p>
+              Pilih gaya balasan bot yang sesuai denganmu: <strong>Santai</strong> (ramah seperti teman), 
+              <strong>Netral</strong> (profesional tapi hangat), <strong>Formal</strong> (sopan terstruktur), 
+              atau <strong>Gaul</strong> (super casual). Ganti kapan saja dengan chat: "gaya santai", "gaya formal", dll.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="icon-box">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-8 h-8"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line
+                  x1="9"
+                  y1="3"
+                  x2="9"
+                  y2="21"
+                /><line x1="3" y1="9" x2="21" y2="9" /></svg
+              >
+            </div>
+            <h3>Kategori Otomatis</h3>
+            <p>
+              Bot otomatis mengenali dan mengkategorikan transaksi: Makan, Minuman, 
+              Transport, Belanja, Hiburan, Kesehatan, Tagihan, dan Lainnya. 
+              Atau sebutkan kategori secara eksplisit: "kopi 20k minuman".
             </p>
           </div>
         </div>
@@ -480,41 +559,85 @@
             finansial mereka.
           </p>
         </div>
-        <div class="grid-3">
+        <div class="testimonials-grid">
           <!-- Testimonial 1 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
             <p class="quote">
               "Dulu males banget catat pengeluaran karena harus buka aplikasi
-              berat. Pake CatatBot, tinggal chat kayak curhat ke temen, beres!"
+              berat. Pake CatatBot, tinggal chat kayak curhat ke temen, beres! 
+              Gaya chat nya bisa disesuaikan, jadi kayak chat sama temen aja."
             </p>
             <div class="user-info">
-              <span class="user-name">Sarah Wijaya</span>
-              <span class="user-role">Freelancer</span>
+              <div class="user-avatar">SW</div>
+              <div class="user-details">
+                <span class="user-name">Sarah Wijaya</span>
+                <span class="user-role">Freelancer</span>
+              </div>
             </div>
           </div>
           <!-- Testimonial 2 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
             <p class="quote">
-              "Fitur 'Sisa Saldo' nya ngebantu banget buat ngerem jajan di akhir
+              "Fitur reminder nya ngebantu banget, jadi gak lupa catat pengeluaran. 
+              Cek saldo real time juga praktis banget buat ngerem jajan di akhir
               bulan. Wajib coba buat anak kos!"
             </p>
             <div class="user-info">
-              <span class="user-name">Budi Santoso</span>
-              <span class="user-role">Mahasiswa</span>
+              <div class="user-avatar">BS</div>
+              <div class="user-details">
+                <span class="user-name">Budi Santoso</span>
+                <span class="user-role">Mahasiswa</span>
+              </div>
             </div>
           </div>
           <!-- Testimonial 3 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
             <p class="quote">
-              "Simpel banget. Suami juga jadi rajin lapor pengeluaran belanja
-              karena gampang pakenya. Top banget."
+              "OCR-nya cepet banget, foto struk langsung ke-catat. Simpel banget. 
+              Suami juga jadi rajin lapor pengeluaran belanja karena gampang pakenya. 
+              Top banget."
             </p>
             <div class="user-info">
-              <span class="user-name">Rina Amelia</span>
-              <span class="user-role">Ibu Rumah Tangga</span>
+              <div class="user-avatar">RA</div>
+              <div class="user-details">
+                <span class="user-name">Rina Amelia</span>
+                <span class="user-role">Ibu Rumah Tangga</span>
+              </div>
+            </div>
+          </div>
+          <!-- Testimonial 4 - New -->
+          <div class="testimonial-card">
+            <div class="stars">★★★★★</div>
+            <p class="quote">
+              "Gaya chat nya bisa diganti-ganti, jadi bisa pilih yang sesuai mood. 
+              Kadang pake gaya gaul kalau lagi santai, kadang formal kalau lagi 
+              serius. Keren banget fiturnya!"
+            </p>
+            <div class="user-info">
+              <div class="user-avatar">AK</div>
+              <div class="user-details">
+                <span class="user-name">Ahmad Kurniawan</span>
+                <span class="user-role">Karyawan Swasta</span>
+              </div>
+            </div>
+          </div>
+          <!-- Testimonial 5 - New -->
+          <div class="testimonial-card">
+            <div class="stars">★★★★★</div>
+            <p class="quote">
+              "Bisa catat beberapa transaksi sekaligus dalam satu pesan, jadi lebih 
+              efisien. Kategori otomatis juga membantu banget buat tracking pengeluaran 
+              per kategori."
+            </p>
+            <div class="user-info">
+              <div class="user-avatar">DP</div>
+              <div class="user-details">
+                <span class="user-name">Dewi Putri</span>
+                <span class="user-role">Wiraswasta</span>
+              </div>
             </div>
           </div>
         </div>
@@ -554,6 +677,11 @@
                 {/if}
                 <div class="card-header">
                   <h3 class="plan-name {isPro ? 'text-white' : ''}">{planName}</h3>
+                  {#if isFree}
+                    <div class="trial-badge">
+                      <span>Trial 3 Hari Gratis</span>
+                    </div>
+                  {/if}
                   <div class="price-container {isPro ? 'text-white' : ''}">
                     {#if isFree}
                       <span class="currency">Gratis</span>
@@ -606,26 +734,256 @@
         <h2>Sering Ditanyakan</h2>
         <div class="faq-grid">
           <div class="faq-item">
-            <h4>Apakah data saya aman?</h4>
-            <p>
-              Ya, kami menggunakan enkripsi end-to-end standar industri. Kami
-              tidak bisa membaca detail pesan chat personalmu, hanya pesan yang
-              dikirim ke bot.
-            </p>
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(0)}
+              aria-expanded={openFaqIndex === 0}
+            >
+              <span>Apakah data saya aman?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 0}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 0}
+              <div class="faq-answer">
+                <p>
+                  Ya, kami menggunakan enkripsi end-to-end standar industri. Kami
+                  tidak bisa membaca detail pesan chat personalmu, hanya pesan yang
+                  dikirim ke bot. Data kamu tersimpan dengan aman dan terisolasi per user.
+                </p>
+              </div>
+            {/if}
           </div>
           <div class="faq-item">
-            <h4>Cara mulainya bagaimana?</h4>
-            <p>
-              Cukup klik tombol "Mulai Trial" dan kirim pesan "Halo" ke nomor
-              bot kami.
-            </p>
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(1)}
+              aria-expanded={openFaqIndex === 1}
+            >
+              <span>Cara mulainya bagaimana?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 1}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 1}
+              <div class="faq-answer">
+                <p>
+                  Cukup klik tombol "Mulai Trial" dan kirim pesan "Halo" ke nomor
+                  bot kami. Setelah itu, kamu bisa langsung mulai mencatat transaksi 
+                  dengan chat natural seperti biasa.
+                </p>
+              </div>
+            {/if}
           </div>
           <div class="faq-item">
-            <h4>Bagaimana jika masa trial habis?</h4>
-            <p>
-              Anda bisa memilih untuk upgrade ke Pro atau VIP. Data Anda akan
-              tetap aman tersimpan.
-            </p>
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(2)}
+              aria-expanded={openFaqIndex === 2}
+            >
+              <span>Berapa limit per plan?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 2}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 2}
+              <div class="faq-answer">
+                <p>
+                  <strong>Free (Trial 3 Hari):</strong> 10 pesan/bulan, 1 OCR/bulan<br/>
+                  <strong>Pro:</strong> 200 pesan/bulan, 50 OCR/bulan<br/>
+                  <strong>VIP:</strong> Unlimited pesan, 200 OCR/bulan<br/><br/>
+                  Limit otomatis di-reset setiap bulan.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(3)}
+              aria-expanded={openFaqIndex === 3}
+            >
+              <span>Apa bedanya Pro vs VIP?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 3}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 3}
+              <div class="faq-answer">
+                <p>
+                  Perbedaan utama adalah jumlah pesan: Pro memiliki limit 200 pesan/bulan, 
+                  sedangkan VIP memiliki unlimited pesan. VIP juga mendapat priority support 
+                  dan fitur premium lainnya. Cocok untuk power users yang sering mencatat transaksi.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(4)}
+              aria-expanded={openFaqIndex === 4}
+            >
+              <span>Bagaimana cara upgrade?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 4}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 4}
+              <div class="faq-answer">
+                <p>
+                  Kamu bisa upgrade kapan saja via chat dengan mengetik "upgrade paket" 
+                  atau langsung pilih plan di halaman pricing. Setelah upgrade, limit baru 
+                  langsung aktif dan data kamu tetap aman tersimpan.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(5)}
+              aria-expanded={openFaqIndex === 5}
+            >
+              <span>Bagaimana cara ganti gaya chat?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 5}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 5}
+              <div class="faq-answer">
+                <p>
+                  Cukup chat: "gaya santai", "gaya formal", "gaya netral", atau "gaya gaul". 
+                  Bot akan langsung mengubah gaya balasannya sesuai pilihanmu. Ganti kapan saja, 
+                  tidak ada limit untuk fitur ini.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(6)}
+              aria-expanded={openFaqIndex === 6}
+            >
+              <span>Bagaimana cara aktifkan reminder?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 6}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 6}
+              <div class="faq-answer">
+                <p>
+                  Chat: "nyalakan reminder" untuk aktifkan, atau "matikan reminder" untuk nonaktifkan. 
+                  Reminder akan mengingatkan kamu setiap malam jika belum mencatat transaksi hari ini. 
+                  Fitur ini default aktif untuk user baru.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(7)}
+              aria-expanded={openFaqIndex === 7}
+            >
+              <span>Apakah data hilang setelah trial habis?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 7}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 7}
+              <div class="faq-answer">
+                <p>
+                  Tidak, data kamu tetap aman tersimpan. Setelah trial habis, kamu hanya tidak bisa 
+                  mencatat transaksi baru sampai upgrade ke Pro atau VIP. Semua data transaksi sebelumnya 
+                  tetap tersimpan dan bisa dilihat setelah upgrade.
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="faq-item">
+            <button 
+              class="faq-question" 
+              on:click={() => toggleFaq(8)}
+              aria-expanded={openFaqIndex === 8}
+            >
+              <span>Metode pembayaran apa saja yang diterima?</span>
+              <svg 
+                class="faq-icon" 
+                class:rotated={openFaqIndex === 8}
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            {#if openFaqIndex === 8}
+              <div class="faq-answer">
+                <p>
+                  Kami menerima pembayaran via transfer bank, e-wallet (OVO, GoPay, DANA), 
+                  dan kartu kredit/debit. Informasi lengkap akan diberikan saat proses upgrade.
+                </p>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -716,6 +1074,29 @@
             <ul>
               <li><a href="#privasi">Kebijakan Privasi</a></li>
               <li><a href="#syarat">Syarat & Ketentuan</a></li>
+            </ul>
+          </div>
+
+          <!-- Column 4: Kontak -->
+          <div class="footer-column">
+            <h4>Kontak</h4>
+            <ul>
+              <li>
+                <a href="mailto:support@catatuang.click" class="contact-link">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                  </svg>
+                  support@catatuang.click
+                </a>
+              </li>
+              <li>
+                <a href={`https://wa.me/${botNumber}`} target="_blank" rel="noopener noreferrer" class="contact-link">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                  WhatsApp Support
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -1025,6 +1406,37 @@
     gap: 1.5rem;
   }
 
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-highlight {
+    position: relative;
+    border: 2px solid var(--color-primary);
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  }
+
+  .feature-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .icon-highlight {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: #fff !important;
+  }
+
   .feature-card {
     background: #fff;
     padding: 2rem;
@@ -1133,6 +1545,18 @@
   .card-header {
     padding: 1.75rem 2rem 0;
     text-align: left;
+  }
+
+  .trial-badge {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(146, 64, 14, 0.1);
   }
 
   .plan-name {
@@ -1254,20 +1678,79 @@
 
   .faq-item {
     background: #fff;
-    padding: 2rem;
     border-radius: 20px;
     border: 1px solid #f1f5f9;
+    overflow: hidden;
+    transition: all 0.3s ease;
   }
 
-  .faq-item h4 {
+  .faq-item:hover {
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  .faq-question {
+    width: 100%;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
     font-size: 1.15rem;
-    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-heading);
+    transition: color 0.2s;
+  }
+
+  .faq-question:hover {
+    color: var(--color-primary);
+  }
+
+  .faq-question span {
+    flex: 1;
+    padding-right: 1rem;
+  }
+
+  .faq-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--color-primary);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .faq-icon.rotated {
+    transform: rotate(180deg);
+  }
+
+  .faq-answer {
+    padding: 0 2rem 1.5rem;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .faq-answer p {
+    color: var(--color-text-body);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .faq-answer p strong {
     color: var(--color-text-heading);
     font-weight: 600;
-  }
-
-  .faq-item p {
-    color: var(--color-text-body);
   }
 
   .footer {
@@ -1278,9 +1761,15 @@
 
   .footer-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
     gap: 3rem;
     margin-bottom: 3rem;
+  }
+
+  .contact-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .footer-brand {
@@ -1378,6 +1867,12 @@
   .message-container {
     max-width: 1200px;
   }
+
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
   .text-center {
     text-align: center;
   }
@@ -1428,11 +1923,31 @@
     border-top: 1px solid #f1f5f9;
     padding-top: 1rem;
     display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+  .user-details {
+    display: flex;
     flex-direction: column;
+    flex: 1;
   }
   .user-name {
     font-weight: 700;
     color: #0f172a;
+    margin-bottom: 2px;
   }
   .user-role {
     font-size: 0.875rem;
@@ -1525,7 +2040,7 @@
       font-size: 2.5rem;
     }
     .feature-card {
-      padding: 2rem;
+      padding: 1.5rem;
     }
     .pricing-card {
       max-width: 100%;
@@ -1540,6 +2055,30 @@
       grid-template-columns: 1fr;
       gap: 2rem;
       margin-bottom: 2rem;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .testimonials-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .faq-question {
+      padding: 1.25rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    .faq-answer {
+      padding: 0 1.5rem 1.25rem;
+    }
+
+    .feature-badge {
+      top: 0.75rem;
+      right: 0.75rem;
+      font-size: 0.7rem;
+      padding: 3px 8px;
     }
     
     .footer-brand {
