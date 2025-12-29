@@ -3,6 +3,7 @@
   import Terms from "./lib/Terms.svelte";
   import Privacy from "./lib/Privacy.svelte";
   import SuccessModal from "./lib/SuccessModal.svelte";
+  import UpgradePage from "./lib/UpgradePage.svelte";
   import { onMount } from "svelte";
 
   // API helper - same as admin
@@ -43,7 +44,7 @@
   let loading = false;
   let selectedPlan = "free"; // free, pro, vip
   let isPlanLocked = false; // true jika plan sudah ditentukan dari tombol
-  let currentPage = "home"; // home, syarat, privasi
+  let currentPage = "home"; // home, syarat, privasi, upgrade, upgrade-success
   let registeredPhone = "";
   let botNumber = "6281234567890"; // Default, akan diambil dari API saat mount
   let pricings = [];
@@ -98,9 +99,25 @@
     }
   }
 
-  // Handle hash routing
-  function handleHashChange() {
+  // Handle routing
+  function handleRouteChange() {
+    const path = window.location.pathname;
     const hash = window.location.hash;
+    const search = window.location.search;
+
+    // Check for upgrade page
+    if (path.match(/^\/upgrade\/[a-zA-Z0-9]{64}$/)) {
+      currentPage = "upgrade";
+      return;
+    }
+
+    // Check for upgrade success page
+    if (path === "/upgrade/success" || search.includes("upgrade/success")) {
+      currentPage = "upgrade-success";
+      return;
+    }
+
+    // Handle hash routing
     if (hash === "#syarat" || hash === "#syarat-ketentuan") {
       currentPage = "syarat";
     } else if (hash === "#privasi" || hash === "#kebijakan-privasi") {
@@ -111,8 +128,9 @@
   }
 
   onMount(() => {
-    handleHashChange();
-    window.addEventListener("hashchange", handleHashChange);
+    handleRouteChange();
+    window.addEventListener("hashchange", handleRouteChange);
+    window.addEventListener("popstate", handleRouteChange);
     
     // Fetch bot number from backend
     (async () => {
@@ -168,7 +186,7 @@
     window.addEventListener('focus', handleFocus);
     
     return () => {
-      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("hashchange", handleRouteChange);
       window.removeEventListener('pricing-updated', handlePricingUpdate);
       window.removeEventListener('storage', handleStorageUpdate);
       window.removeEventListener('focus', handleFocus);
@@ -387,7 +405,11 @@
   </nav>
 
   <main>
-    {#if currentPage === "syarat"}
+    {#if currentPage === "upgrade"}
+      <UpgradePage />
+    {:else if currentPage === "upgrade-success"}
+      <UpgradePage />
+    {:else if currentPage === "syarat"}
       <Terms />
     {:else if currentPage === "privasi"}
       <Privacy />
