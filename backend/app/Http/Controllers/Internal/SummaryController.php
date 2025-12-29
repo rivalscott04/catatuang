@@ -27,7 +27,7 @@ class SummaryController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
 
         // Get user
         $user = User::where('phone_number', $phone)->first();
@@ -73,7 +73,7 @@ class SummaryController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
 
         // Get user
         $user = User::where('phone_number', $phone)->first();
@@ -125,7 +125,7 @@ class SummaryController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
 
         // Get user
         $user = User::where('phone_number', $phone)->first();
@@ -165,33 +165,6 @@ class SummaryController extends Controller
     /**
      * Normalize phone number (same as UserController for consistency)
      */
-    private function normalizePhoneNumber(string $phone): string
-    {
-        if (empty($phone)) {
-            return $phone;
-        }
-
-        // Remove spaces/dashes except leading +
-        $phone = preg_replace('/[^\d+]/', '', $phone);
-
-        if (str_starts_with($phone, '+62')) {
-            return $phone;
-        }
-
-        if (str_starts_with($phone, '62')) {
-            return '+' . $phone;
-        }
-
-        if (str_starts_with($phone, '0')) {
-            return '+62' . substr($phone, 1);
-        }
-
-        if (str_starts_with($phone, '8')) {
-            return '+62' . $phone;
-        }
-
-        return $phone;
-    }
 
     /**
      * Error response helper

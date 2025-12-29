@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class ReportController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $period = $request->input('period');
 
         // Get user
@@ -137,11 +138,6 @@ class ReportController extends Controller
     /**
      * Normalize phone number (remove + and spaces)
      */
-    private function normalizePhoneNumber(string $phone): string
-    {
-        return preg_replace('/[^0-9]/', '', $phone);
-    }
-
     /**
      * Error response helper
      */

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class UserController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $name = $request->input('name');
 
         if (!$phone) {
@@ -132,7 +133,7 @@ class UserController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $enabled = (bool) $request->boolean('reminder_enabled');
 
         $user = User::where('phone_number', $phone)->first();
@@ -168,7 +169,7 @@ class UserController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $styleInput = strtolower(trim($request->input('style')));
 
         $styleMap = [
@@ -200,33 +201,6 @@ class UserController extends Controller
         ]);
     }
 
-    private function normalizePhoneNumber(?string $phone): ?string
-    {
-        if (empty($phone)) {
-            return $phone;
-        }
-
-        // Remove spaces/dashes except leading +
-        $phone = preg_replace('/[^\d+]/', '', $phone);
-
-        if (str_starts_with($phone, '+62')) {
-            return $phone;
-        }
-
-        if (str_starts_with($phone, '62')) {
-            return '+' . $phone;
-        }
-
-        if (str_starts_with($phone, '0')) {
-            return '+62' . substr($phone, 1);
-        }
-
-        if (str_starts_with($phone, '8')) {
-            return '+62' . $phone;
-        }
-
-        return $phone;
-    }
 
     /**
      * POST /internal/users/increment-chat
@@ -242,7 +216,7 @@ class UserController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {
@@ -310,7 +284,7 @@ class UserController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {

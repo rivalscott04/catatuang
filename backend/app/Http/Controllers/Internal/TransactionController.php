@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\PhoneHelper;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -37,7 +38,7 @@ class TransactionController extends Controller
             ], 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
 
         if (!$phone) {
             return response()->json([
@@ -175,31 +176,5 @@ class TransactionController extends Controller
         ], 201);
     }
 
-    private function normalizePhoneNumber(?string $phone): ?string
-    {
-        if (empty($phone)) {
-            return $phone;
-        }
-
-        $phone = preg_replace('/[^\d+]/', '', $phone);
-
-        if (str_starts_with($phone, '+62')) {
-            return $phone;
-        }
-
-        if (str_starts_with($phone, '62')) {
-            return '+' . $phone;
-        }
-
-        if (str_starts_with($phone, '0')) {
-            return '+62' . substr($phone, 1);
-        }
-
-        if (str_starts_with($phone, '8')) {
-            return '+62' . $phone;
-        }
-
-        return $phone;
-    }
 }
 

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -27,8 +28,16 @@ class UnlimitedUsersSeeder extends Seeder
         ];
 
         foreach ($unlimitedUsers as $userData) {
+            // Normalize phone number menggunakan PhoneHelper (format 62... tanpa +)
+            $phone = PhoneHelper::normalize($userData['phone_number']);
+            
+            if (!$phone) {
+                $this->command->warn("Skipping user {$userData['name']}: Invalid phone number {$userData['phone_number']}");
+                continue;
+            }
+            
             User::updateOrCreate(
-                ['phone_number' => $userData['phone_number']],
+                ['phone_number' => $phone],
                 [
                     'name' => $userData['name'],
                     'plan' => 'unlimited',

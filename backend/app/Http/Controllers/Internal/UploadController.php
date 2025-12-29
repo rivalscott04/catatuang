@@ -33,7 +33,7 @@ class UploadController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {
@@ -107,7 +107,7 @@ class UploadController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {
@@ -232,7 +232,7 @@ class UploadController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {
@@ -287,7 +287,7 @@ class UploadController extends Controller
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
         }
 
-        $phone = $this->normalizePhoneNumber($request->input('phone_number'));
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
         $user = User::where('phone_number', $phone)->first();
 
         if (!$user) {
@@ -402,10 +402,6 @@ class UploadController extends Controller
     /**
      * Normalize phone number
      */
-    private function normalizePhoneNumber(string $phone): string
-    {
-        return preg_replace('/[^0-9]/', '', $phone);
-    }
 
     /**
      * Error response helper

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         // Normalize phone number
-        $phoneNumber = $this->normalizePhoneNumber($request->phone_number);
+        $phoneNumber = PhoneHelper::normalize($request->phone_number);
 
         // Validate
         $validator = Validator::make([
@@ -146,41 +147,5 @@ class AuthController extends Controller
      * Normalize Indonesian phone number
      * Converts various formats to standard format (08xx or +62xxx)
      */
-    private function normalizePhoneNumber($phone)
-    {
-        if (empty($phone)) {
-            return $phone;
-        }
-
-        // Remove all non-digit characters except +
-        $phone = preg_replace('/[^\d+]/', '', $phone);
-
-        // If starts with +62, keep it
-        if (strpos($phone, '+62') === 0) {
-            return $phone;
-        }
-
-        // If starts with 62 (without +), add +
-        if (strpos($phone, '62') === 0 && strlen($phone) > 2) {
-            return '+' . $phone;
-        }
-
-        // If starts with 0, convert to +62
-        if (strpos($phone, '0') === 0) {
-            return '+62' . substr($phone, 1);
-        }
-
-        // If starts with 8 (assume it's 08xx), add +62
-        if (strpos($phone, '8') === 0) {
-            return '+62' . $phone;
-        }
-
-        // Default: assume it's already in correct format or add +62
-        if (strlen($phone) >= 10) {
-            return '+62' . ltrim($phone, '0');
-        }
-
-        return $phone;
-    }
 }
 
