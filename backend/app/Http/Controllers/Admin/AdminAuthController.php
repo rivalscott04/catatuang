@@ -11,13 +11,40 @@ use App\Models\Admin;
 class AdminAuthController extends Controller
 {
     /**
-     * Handle admin login
+     * Handle admin login with anti-bot protection
      */
     public function login(Request $request)
     {
+        // Anti-bot: Honeypot field - if filled, it's likely a bot
+        if ($request->has('website') && !empty($request->input('website'))) {
+            // Bot detected, return generic error without processing
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+        
+        // Anti-bot: Check if request is too fast (less than 1 second from page load)
+        // This is handled by frontend timestamp, but we validate it here too
+        $timestamp = $request->input('_timestamp');
+        if ($timestamp && (time() - (int)$timestamp) < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+        
+        // Anti-bot: Validate user agent exists (basic check)
+        if (!$request->hasHeader('User-Agent') || empty($request->header('User-Agent'))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+
         $validator = Validator::make($request->all(), [
-            'username' => 'required|string',
-            'password' => 'required|string',
+            'username' => 'required|string|max:255',
+            'password' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -40,6 +67,7 @@ class AdminAuthController extends Controller
             ->first();
 
         if (!$admin) {
+            // Always return same error message to prevent username enumeration
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',

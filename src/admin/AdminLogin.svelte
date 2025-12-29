@@ -8,6 +8,8 @@
   let password = '';
   let error = '';
   let loading = false;
+  let pageLoadTime = Date.now();
+  let honeypotWebsite = ''; // Honeypot field - should always be empty
 
   async function getCsrfToken() {
     try {
@@ -58,12 +60,17 @@
         headers['X-CSRF-TOKEN'] = csrfToken;
       }
 
+      // Calculate time since page load (anti-bot: prevent instant submissions)
+      const timeSinceLoad = Math.floor((Date.now() - pageLoadTime) / 1000);
+      
       const response = await apiFetch('/admin/login', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
           username: username.trim(),
           password: password,
+          _timestamp: timeSinceLoad, // Anti-bot: timestamp since page load
+          website: honeypotWebsite, // Anti-bot: honeypot field (should be empty)
         }),
       });
 
@@ -134,6 +141,17 @@
           autocomplete="current-password"
         />
       </div>
+
+      <!-- Honeypot field - hidden from users, bots will fill this -->
+      <input
+        type="text"
+        name="website"
+        bind:value={honeypotWebsite}
+        style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;"
+        tabindex="-1"
+        autocomplete="off"
+        aria-hidden="true"
+      />
 
       <button type="submit" class="btn-submit" disabled={loading}>
         {loading ? 'Memproses...' : 'Masuk'}

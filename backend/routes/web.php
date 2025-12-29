@@ -13,8 +13,9 @@ Route::get('/csrf-token', function () {
 
 // Admin API routes only (no views, frontend handles routing)
 Route::prefix('admin')->group(function () {
-    // Public admin API routes with rate limiting
-    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
+    // Public admin API routes with enhanced rate limiting and anti-bot protection
+    Route::post('/login', [AdminAuthController::class, 'login'])
+        ->middleware(['login.rate.limit', 'throttle:10,1']);
 
     // Protected admin API routes
     Route::middleware(['admin.auth'])->group(function () {
