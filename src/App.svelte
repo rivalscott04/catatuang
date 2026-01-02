@@ -748,8 +748,9 @@
                   {/if}
                 </ul>
                 <button 
-                  class="btn-block {isPro ? 'btn-primary-bright' : 'btn-outline'}" 
-                  on:click={() => openRegisterModal(pricing.plan)}
+                  class="btn-block {isPro ? 'btn-primary-bright' : 'btn-outline'} {!isFree ? 'disabled' : ''}" 
+                  disabled={!isFree}
+                  on:click={() => isFree && openRegisterModal(pricing.plan)}
                 >
                   {buttonText}
                 </button>
@@ -1724,6 +1725,19 @@
     color: var(--color-primary-hover);
     transform: translateY(-2px);
   }
+  .btn-outline.disabled,
+  .btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .btn-outline.disabled:hover,
+  .btn-outline:disabled:hover {
+    border-color: #e2e8f0;
+    background: transparent;
+    color: var(--color-primary);
+    transform: none;
+  }
 
   /* FAQ */
   .narrow-container {
@@ -2090,6 +2104,18 @@
     background: #34d399;
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+  }
+  .btn-primary-bright.disabled,
+  .btn-primary-bright:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .btn-primary-bright.disabled:hover,
+  .btn-primary-bright:disabled:hover {
+    background: #10b981;
+    transform: none;
+    box-shadow: none;
   }
 
   .popular-tag {
