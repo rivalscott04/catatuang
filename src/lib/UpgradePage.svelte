@@ -63,6 +63,9 @@
 
   async function validateToken() {
     try {
+      console.log('Validating token:', token);
+      console.log('API Base URL:', apiBaseUrl);
+      
       const response = await fetch(`${apiBaseUrl}/api/upgrade/validate/${token}`, {
         method: 'GET',
         credentials: 'include',
@@ -71,11 +74,27 @@
         },
       });
 
-      const data = await response.json();
+      console.log('Validation response status:', response.status);
 
-      if (response.ok && data.success) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Validation failed:', response.status, errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          error = errorData.message || 'Token tidak valid atau sudah expired';
+        } catch {
+          error = 'Token tidak valid atau sudah expired';
+        }
+        loading = false;
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Validation response data:', data);
+
+      if (data.success) {
         user = data.data.user;
-        currentPlan = data.data.current_plan;
+        currentPlan = data.data.current_plan || '';
         await loadPlans();
       } else {
         error = data.message || 'Token tidak valid atau sudah expired';
@@ -83,13 +102,15 @@
       }
     } catch (err) {
       console.error('Validation error:', err);
-      error = 'Terjadi kesalahan saat memvalidasi token';
+      error = 'Terjadi kesalahan saat memvalidasi token. Pastikan koneksi internet Anda stabil.';
       loading = false;
     }
   }
 
   async function loadPlans() {
     try {
+      console.log('Loading plans for token:', token);
+      
       const response = await fetch(`${apiBaseUrl}/api/upgrade/${token}`, {
         method: 'GET',
         credentials: 'include',
@@ -98,11 +119,28 @@
         },
       });
 
-      const data = await response.json();
+      console.log('Load plans response status:', response.status);
 
-      if (response.ok && data.success) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Load plans failed:', response.status, errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          error = errorData.message || 'Gagal memuat paket yang tersedia';
+        } catch {
+          error = 'Gagal memuat paket yang tersedia';
+        }
+        loading = false;
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Load plans response data:', data);
+
+      if (data.success) {
         // Filter out unlimited plan (double check on frontend)
         availablePlans = (data.data.available_plans || []).filter(plan => plan.plan !== 'unlimited');
+        console.log('Available plans:', availablePlans);
         if (availablePlans.length > 0) {
           selectedPlan = availablePlans[0].plan;
         }
@@ -113,7 +151,7 @@
       }
     } catch (err) {
       console.error('Load plans error:', err);
-      error = 'Terjadi kesalahan saat memuat paket';
+      error = 'Terjadi kesalahan saat memuat paket. Pastikan koneksi internet Anda stabil.';
       loading = false;
     }
   }
@@ -309,7 +347,7 @@
 <style>
   .upgrade-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--color-bg);
     padding: 2rem 1rem;
     display: flex;
     align-items: center;
@@ -319,20 +357,21 @@
   .loading-container,
   .error-container,
   .success-container {
-    background: white;
+    background: var(--color-card-bg);
     border-radius: 24px;
     padding: 3rem 2rem;
     text-align: center;
     max-width: 500px;
     width: 100%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--color-border);
   }
 
   .spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid #e2e8f0;
-    border-top-color: #667eea;
+    border: 4px solid var(--color-border);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin: 0 auto 1rem;
@@ -354,39 +393,45 @@
   .success-container h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--color-text-heading);
     margin-bottom: 0.5rem;
+  }
+
+  .loading-container p {
+    color: var(--color-text-body);
+    margin-top: 1rem;
   }
 
   .error-container p,
   .success-container p {
-    color: #64748b;
+    color: var(--color-text-body);
     margin-bottom: 1.5rem;
   }
 
   .back-link {
     display: inline-block;
-    color: #667eea;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     padding: 0.75rem 1.5rem;
-    border: 2px solid #667eea;
+    border: 2px solid var(--color-primary);
     border-radius: 12px;
     transition: all 0.2s;
   }
 
   .back-link:hover {
-    background: #667eea;
+    background: var(--color-primary);
     color: white;
   }
 
   .upgrade-container {
-    background: white;
+    background: var(--color-card-bg);
     border-radius: 24px;
     padding: 2.5rem;
     max-width: 900px;
     width: 100%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--color-border);
   }
 
   .header {
@@ -397,23 +442,24 @@
   .header h1 {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--color-text-heading);
     margin-bottom: 0.5rem;
   }
 
   .subtitle {
-    color: #64748b;
+    color: var(--color-text-body);
     font-size: 1.125rem;
     margin-bottom: 1rem;
   }
 
   .user-info {
-    background: #f8fafc;
+    background: var(--color-bg);
     border-radius: 12px;
     padding: 1rem;
     margin-top: 1rem;
     font-size: 0.875rem;
-    color: #64748b;
+    color: var(--color-text-body);
+    border: 1px solid var(--color-border);
   }
 
   .user-info p {
@@ -421,7 +467,7 @@
   }
 
   .user-info strong {
-    color: #0f172a;
+    color: var(--color-text-heading);
   }
 
   .error-message {
@@ -436,7 +482,7 @@
   .no-plans {
     text-align: center;
     padding: 3rem;
-    color: #64748b;
+    color: var(--color-text-body);
   }
 
   .plans-grid {
@@ -447,13 +493,13 @@
   }
 
   .plan-card {
-    border: 2px solid #e2e8f0;
+    border: 2px solid var(--color-border);
     border-radius: 16px;
     padding: 1.5rem;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
-    background: white;
+    background: var(--color-card-bg);
     width: 100%;
     text-align: left;
     font-family: inherit;
@@ -461,14 +507,14 @@
   }
 
   .plan-card:hover {
-    border-color: #667eea;
+    border-color: var(--color-primary);
     transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
   }
 
   .plan-card.selected {
-    border-color: #667eea;
-    background: #f8faff;
+    border-color: var(--color-primary);
+    background: #f0fdf4;
   }
 
   .plan-header {
@@ -477,7 +523,7 @@
 
   .badge {
     display: inline-block;
-    background: #667eea;
+    background: var(--color-primary);
     color: white;
     font-size: 0.75rem;
     font-weight: 600;
@@ -489,25 +535,25 @@
   .plan-card h2 {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--color-text-heading);
     margin-bottom: 0.5rem;
   }
 
   .price {
     font-size: 2rem;
     font-weight: 700;
-    color: #667eea;
+    color: var(--color-primary);
     margin-bottom: 0.5rem;
   }
 
   .period {
     font-size: 1rem;
     font-weight: 400;
-    color: #64748b;
+    color: var(--color-text-body);
   }
 
   .plan-description {
-    color: #64748b;
+    color: var(--color-text-body);
     font-size: 0.875rem;
     margin-bottom: 1rem;
   }
@@ -520,7 +566,7 @@
 
   .features-list li {
     padding: 0.5rem 0;
-    color: #475569;
+    color: var(--color-text-body);
     font-size: 0.875rem;
     position: relative;
     padding-left: 1.5rem;
@@ -530,7 +576,7 @@
     content: '✓';
     position: absolute;
     left: 0;
-    color: #10b981;
+    color: var(--color-primary);
     font-weight: 700;
   }
 
@@ -541,7 +587,7 @@
 
   .selected-badge {
     display: inline-block;
-    background: #10b981;
+    background: var(--color-primary);
     color: white;
     font-size: 0.75rem;
     font-weight: 600;
@@ -552,11 +598,11 @@
   .actions {
     text-align: center;
     padding-top: 2rem;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--color-border);
   }
 
   .upgrade-button {
-    background: #667eea;
+    background: var(--color-primary);
     color: white;
     font-weight: 600;
     font-size: 1.125rem;
@@ -571,9 +617,9 @@
   }
 
   .upgrade-button:hover:not(:disabled) {
-    background: #5568d3;
+    background: var(--color-primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
   }
 
   .upgrade-button:disabled {
@@ -583,13 +629,13 @@
 
   .cancel-link {
     display: inline-block;
-    color: #64748b;
+    color: var(--color-text-body);
     text-decoration: none;
     font-size: 0.875rem;
   }
 
   .cancel-link:hover {
-    color: #0f172a;
+    color: var(--color-text-heading);
   }
 
   @media (max-width: 640px) {
