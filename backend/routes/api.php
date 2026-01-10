@@ -8,6 +8,8 @@ use App\Http\Controllers\Internal\SummaryController;
 use App\Http\Controllers\Internal\SubscriptionController;
 use App\Http\Controllers\Internal\ReportController;
 use App\Http\Controllers\Internal\UploadController;
+use App\Http\Controllers\Internal\UpgradeController as InternalUpgradeController;
+use App\Http\Controllers\UpgradeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +28,12 @@ Route::get('/bot-number', [AuthController::class, 'getBotNumber']);
 
 // Public pricing endpoint
 Route::get('/pricing', [\App\Http\Controllers\PricingController::class, 'index']);
+
+// Public upgrade endpoints
+Route::get('/upgrade/validate/{token}', [UpgradeController::class, 'validateToken']);
+Route::get('/upgrade/{token}', [UpgradeController::class, 'getPlans']);
+Route::post('/upgrade/process', [UpgradeController::class, 'processUpgrade']);
+Route::get('/upgrade/success', [UpgradeController::class, 'getSuccessInfo']);
 
 /*
 |--------------------------------------------------------------------------
@@ -66,5 +74,9 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     Route::post('/uploads/download-image', [UploadController::class, 'downloadImage']);
     Route::post('/uploads/confirm', [UploadController::class, 'confirm']);
     Route::get('/uploads/pending', [UploadController::class, 'getPending']);
+    
+    // Upgrade endpoints (for n8n)
+    Route::get('/upgrade/generate-link', [InternalUpgradeController::class, 'generateLink']);
+    Route::post('/upgrade/generate-link', [InternalUpgradeController::class, 'generateLink']);
 });
 
