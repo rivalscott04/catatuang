@@ -95,6 +95,7 @@
       if (data.success) {
         user = data.data.user;
         currentPlan = data.data.current_plan || '';
+        console.log('Current plan from validateToken:', currentPlan);
         await loadPlans();
       } else {
         error = data.message || 'Token tidak valid atau sudah expired';
@@ -138,6 +139,15 @@
       console.log('Load plans response data:', data);
 
       if (data.success) {
+        // Always update currentPlan from loadPlans response (most reliable source)
+        // This ensures we have the most up-to-date value
+        if (data.data.current_plan) {
+          currentPlan = data.data.current_plan;
+          console.log('Current plan updated from loadPlans:', currentPlan);
+        } else {
+          console.warn('current_plan not found in loadPlans response, keeping existing:', currentPlan);
+        }
+        
         // Filter out unlimited plan (double check on frontend)
         availablePlans = (data.data.available_plans || []).filter(plan => plan.plan !== 'unlimited');
         console.log('Available plans:', availablePlans);
@@ -231,12 +241,13 @@
   }
 
   function getPlanName(plan) {
+    if (!plan) return '-';
     const names = {
       free: 'Free Trial',
       pro: 'Pro',
       vip: 'VIP',
     };
-    return names[plan] || plan.toUpperCase();
+    return names[plan.toLowerCase()] || plan.toUpperCase();
   }
 </script>
 
@@ -268,7 +279,7 @@
         {#if user}
           <div class="user-info">
             <p>Nomor WhatsApp: <strong>{user.phone_number}</strong></p>
-            <p>Paket saat ini: <strong>{getPlanName(currentPlan)}</strong></p>
+            <p>Paket saat ini: <strong>{currentPlan ? getPlanName(currentPlan) : 'Memuat...'}</strong></p>
           </div>
         {/if}
       </div>
