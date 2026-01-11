@@ -266,23 +266,22 @@
           
           <div class="qris-wrapper">
             {#if paymentUrl}
-              <iframe
-                src="{paymentUrl}"
-                class="qris-iframe"
-                frameborder="0"
-                allow="payment"
-                title="QRIS Payment"
-              ></iframe>
-              <div class="qris-fallback">
-                <a href={paymentUrl} target="_blank" rel="noopener noreferrer" class="open-payment-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
+              <a href={paymentUrl} target="_blank" rel="noopener noreferrer" class="qris-button">
+                <div class="qris-button-content">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="qris-button-icon">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                    <path d="M7 14h.01M11 14h.01M15 14h.01M7 18h.01M11 18h.01M15 18h.01"></path>
                   </svg>
-                  Buka di Halaman Baru
-                </a>
-              </div>
+                  <div class="qris-button-text">
+                    <span class="qris-button-title">Buka Halaman Pembayaran</span>
+                    <span class="qris-button-subtitle">QR Code akan muncul di halaman baru</span>
+                  </div>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="qris-button-arrow">
+                    <path d="M5 12h14M12 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </a>
             {/if}
           </div>
         </div>
@@ -499,54 +498,71 @@
   .qris-wrapper {
     background: white;
     border-radius: 16px;
-    padding: 1.5rem;
+    padding: 0;
     border: 2px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 320px;
+    overflow: hidden;
     position: relative;
   }
 
-  .qris-iframe {
-    width: 100%;
-    min-height: 300px;
-    border: none;
-    border-radius: 12px;
-    background: white;
-  }
-
-  .qris-fallback {
-    margin-top: 1rem;
-    width: 100%;
-  }
-
-  .open-payment-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    background: var(--color-primary);
-    color: white;
+  .qris-button {
+    display: block;
     text-decoration: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+    color: inherit;
     width: 100%;
-    justify-content: center;
+    transition: all 0.3s ease;
   }
 
-  .open-payment-btn svg {
-    width: 18px;
-    height: 18px;
+  .qris-button:hover {
+    transform: translateY(-2px);
   }
 
-  .open-payment-btn:hover {
-    background: var(--color-primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  .qris-button-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+    transition: all 0.3s ease;
+    gap: 1.5rem;
   }
+
+  .qris-button:hover .qris-button-content {
+    background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15);
+  }
+
+  .qris-button-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  .qris-button-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .qris-button-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-heading);
+  }
+
+  .qris-button-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-text-body);
+  }
+
+  .qris-button-arrow {
+    width: 24px;
+    height: 24px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
 
   .instructions {
     display: flex;
@@ -629,13 +645,24 @@
       display: inline-flex;
     }
 
-    .qris-wrapper {
-      min-height: 280px;
-      padding: 1rem;
+    .qris-button-content {
+      padding: 2rem 1.5rem;
+      flex-direction: column;
+      text-align: center;
+      gap: 1rem;
     }
 
-    .qris-iframe {
-      min-height: 260px;
+    .qris-button-icon {
+      width: 56px;
+      height: 56px;
+    }
+
+    .qris-button-title {
+      font-size: 1.125rem;
+    }
+
+    .qris-button-arrow {
+      display: none;
     }
 
     .summary-total {
