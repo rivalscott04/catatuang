@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\PhoneHelper;
 use App\Models\User;
+use App\Models\UpgradeToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -53,14 +54,18 @@ class AuthController extends Controller
         }
 
         // Determine plan - default to 'free' if not provided or invalid
-        $plan = $request->plan ?? 'free';
-        if (!in_array($plan, ['free', 'pro', 'vip'])) {
-            $plan = 'free';
+        $requestedPlan = $request->plan ?? 'free';
+        if (!in_array($requestedPlan, ['free', 'pro', 'vip'])) {
+            $requestedPlan = 'free';
         }
+
+        // For paid plans, user will start with 'free' and need to checkout
+        $isPaidPlan = in_array($requestedPlan, ['pro', 'vip']);
+        $initialPlan = $isPaidPlan ? 'free' : $requestedPlan;
 
         // Use database transaction to prevent race conditions
         try {
-            $user = \Illuminate\Support\Facades\DB::transaction(function () use ($phoneNumber, $request, $plan) {
+            $result = \Illuminate\Support\Facades\DB::transaction(function () use ($phoneNumber, $request, $initialPlan, $requestedPlan, $isPaidPlan) {
                 // Check if user already exists (with lock to prevent race condition)
                 $existingUser = User::where('phone_number', $phoneNumber)->lockForUpdate()->first();
                 
@@ -70,20 +75,34 @@ class AuthController extends Controller
                     );
                 }
 
-                // Create new user
+                // Create new user with initial plan (free for paid plans, or requested plan for free)
                 $user = User::create([
                     'phone_number' => $phoneNumber,
                     'name' => $request->name,
-                    'plan' => $plan,
+                    'plan' => $initialPlan,
                     'status' => 'active',
                     'reminder_enabled' => true,
                 ]);
 
                 // Initialize subscription for new user
-                $user->initializeSubscription($plan);
+                $user->initializeSubscription($initialPlan);
 
-                return $user;
+                // Generate upgrade token if paid plan was requested
+                $upgradeToken = null;
+                if ($isPaidPlan) {
+                    $upgradeToken = UpgradeToken::generateForUser($phoneNumber, $user->id);
+                }
+
+                return [
+                    'user' => $user,
+                    'upgrade_token' => $upgradeToken,
+                    'requested_plan' => $requestedPlan,
+                ];
             });
+            
+            $user = $result['user'];
+            $upgradeToken = $result['upgrade_token'];
+            $requestedPlan = $result['requested_plan'];
         } catch (\Illuminate\Validation\ValidationException $e) {
             // User already exists
             $errorMessage = 'Nomor WhatsApp ini sudah terdaftar. Silakan gunakan nomor lain atau hubungi support.';
@@ -121,10 +140,19 @@ class AuthController extends Controller
         }
 
         // Return JSON response (frontend handles success display)
-        return response()->json([
+        $response = [
             'message' => 'Registrasi berhasil',
             'phone' => $phoneNumber,
-        ], 201);
+        ];
+        
+        // If paid plan was requested, include upgrade token for checkout
+        if ($isPaidPlan && $upgradeToken) {
+            $response['upgrade_token'] = $upgradeToken->token;
+            $response['plan'] = $requestedPlan;
+            $response['needs_checkout'] = true;
+        }
+        
+        return response()->json($response, 201);
     }
 
     /**

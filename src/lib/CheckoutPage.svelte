@@ -121,6 +121,18 @@
         },
       });
 
+      // Handle non-OK responses
+      if (!response.ok) {
+        // If 404, endpoint might not be available yet - silently fail
+        if (response.status === 404) {
+          console.warn('Payment status endpoint not found (404) - endpoint may not be deployed yet');
+          return;
+        }
+        // For other errors, log but don't throw
+        console.warn('Payment status check failed:', response.status, response.statusText);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success && data.data.status === 'completed') {
@@ -133,7 +145,12 @@
         }, 2000);
       }
     } catch (err) {
-      console.error('Payment status check error:', err);
+      // Only log if it's not a JSON parse error from 404
+      if (err instanceof SyntaxError) {
+        console.warn('Payment status endpoint returned invalid JSON - endpoint may not be available');
+      } else {
+        console.error('Payment status check error:', err);
+      }
     } finally {
       checkingPayment = false;
     }

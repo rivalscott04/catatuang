@@ -355,7 +355,14 @@
         // Close register modal
         closeRegisterModal();
         
-        // Set registered phone and show success modal
+        // If paid plan was selected, redirect to checkout
+        if (data.needs_checkout && data.upgrade_token && data.plan) {
+          // Redirect to checkout page
+          window.location.href = `/checkout?token=${data.upgrade_token}&plan=${data.plan}`;
+          return;
+        }
+        
+        // For free plan, show success modal
         registeredPhone = cleanPhone;
         showSuccessModal = true;
         document.body.style.overflow = "hidden";
@@ -771,9 +778,8 @@
                   {/if}
                 </ul>
                 <button 
-                  class="btn-block {isPro ? 'btn-primary-bright' : 'btn-outline'} {!isFree ? 'disabled' : ''}" 
-                  disabled={!isFree}
-                  on:click={() => isFree && openRegisterModal(pricing.plan)}
+                  class="btn-block {isPro ? 'btn-primary-bright' : 'btn-outline'}" 
+                  on:click={() => openRegisterModal(pricing.plan)}
                 >
                   {buttonText}
                 </button>
