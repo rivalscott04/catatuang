@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use App\Models\BlacklistedIp;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoginRateLimit
@@ -17,21 +16,10 @@ class LoginRateLimit
      * - 3 attempts per 15 minutes per IP
      * - Progressive delay after failed attempts (1s, 2s, 5s)
      * - Lockout after 5 failed attempts for 30 minutes
-     * - Permanent blacklist after 3 lockouts or 20+ total failed attempts
      */
     public function handle(Request $request, Closure $next): Response
     {
         $ip = $request->ip();
-        
-        // Check if IP is blacklisted (permanent ban)
-        if (BlacklistedIp::isBlacklisted($ip)) {
-            $blacklisted = BlacklistedIp::getBlacklisted($ip);
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. IP Anda telah di-blacklist karena aktivitas mencurigakan.',
-                'reason' => $blacklisted->reason ?? 'Terlalu banyak percobaan login yang gagal',
-            ], 403);
-        }
         
         $key = 'login_attempts:' . $ip;
         $username = $request->input('username');
@@ -123,30 +111,6 @@ class LoginRateLimit
                 $newLockoutCount = $lockoutCount + 1;
                 Cache::put($lockoutKey, now()->addMinutes(30), now()->addMinutes(30));
                 Cache::put($lockoutCountKey, $newLockoutCount, now()->addDays(1)); // Keep count for 24 hours
-                
-                // Blacklist criteria:
-                // - 3 or more lockouts, OR
-                // - 20+ total failed attempts
-                if ($newLockoutCount >= 3 || $newFailedAttempts >= 20) {
-                    BlacklistedIp::addToBlacklist(
-                        $ip,
-                        $newLockoutCount,
-                        $newFailedAttempts,
-                        "IP di-blacklist setelah {$newLockoutCount} kali lockout dan {$newFailedAttempts} total percobaan gagal"
-                    );
-                    
-                    // Clear cache since IP is now permanently blacklisted
-                    Cache::forget($key);
-                    Cache::forget($ipLimitKey);
-                    Cache::forget($ipLimitKey . ':reset');
-                    Cache::forget($lockoutKey);
-                    Cache::forget($lockoutCountKey);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Akses ditolak. IP Anda telah di-blacklist karena terlalu banyak percobaan login yang gagal.',
-                    ], 403);
-                }
             }
         } else {
             // Login successful, clear counters
