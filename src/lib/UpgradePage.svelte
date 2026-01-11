@@ -54,6 +54,17 @@
     const match = path.match(/\/upgrade\/([a-zA-Z0-9]{64})/);
     if (match) {
       token = match[1];
+      
+      // Check if plan is specified in URL (magic link with specific plan)
+      const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
+      
+      if (planParam && (planParam === 'pro' || planParam === 'vip')) {
+        // Direct to checkout with specified plan
+        window.location.href = `/checkout?token=${token}&plan=${planParam}`;
+        return;
+      }
+      
       validateToken();
     } else {
       error = 'Token tidak valid';

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\UpgradeToken;
 use App\Models\Pricing;
+use App\Models\Payment;
 
 class PakasirWebhookController extends Controller
 {
@@ -99,12 +100,119 @@ class PakasirWebhookController extends Controller
             // Process payment in database transaction
             DB::beginTransaction();
 
-            // Try to find payment record or upgrade token by order_id
+            // First, try to find payment by order_id
+            $payment = Payment::findByOrderId($orderId);
+
+            if ($payment) {
+                // Payment record found - check if already processed
+                if ($payment->status === 'completed') {
+                    DB::commit();
+                    Log::info('Pakasir webhook: Payment already processed', [
+                        'order_id' => $orderId,
+                        'payment_id' => $payment->id,
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Payment already processed',
+                        'data' => [
+                            'order_id' => $orderId,
+                            'payment_id' => $payment->id,
+                        ],
+                    ], 200);
+                }
+
+                // Update payment record
+                $payment->markAsCompleted(
+                    $paymentMethod,
+                    $orderId, // Pakasir might return different order_id
+                    [
+                        'webhook_payload' => $request->all(),
+                        'completed_at' => $completedAt,
+                    ]
+                );
+
+                $user = $payment->user;
+                $upgradeToken = $payment->upgradeToken;
+
+                if (!$user) {
+                    DB::rollBack();
+                    Log::error('Pakasir webhook: User not found for payment', [
+                        'order_id' => $orderId,
+                        'payment_id' => $payment->id,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User not found',
+                    ], 404);
+                }
+
+                // Validate plan upgrade
+                $planHierarchy = ['free' => 0, 'starter' => 1, 'pro' => 2, 'vip' => 3, 'unlimited' => 999];
+                $currentPlanLevel = $planHierarchy[$user->plan] ?? 0;
+                $newPlanLevel = $planHierarchy[$payment->plan] ?? 0;
+
+                // Allow upgrade from free to any plan, or to higher tier plan
+                if ($currentPlanLevel >= $newPlanLevel && $user->plan !== 'free') {
+                    DB::rollBack();
+                    Log::warning('Pakasir webhook: Invalid plan upgrade', [
+                        'order_id' => $orderId,
+                        'current_plan' => $user->plan,
+                        'new_plan' => $payment->plan,
+                        'user_id' => $user->id,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid plan upgrade',
+                    ], 400);
+                }
+
+                // Process upgrade
+                $oldPlan = $user->plan;
+                $user->plan = $payment->plan;
+                $user->initializeSubscription($payment->plan);
+                $user->save();
+
+                // Mark token as used if exists
+                if ($upgradeToken) {
+                    $upgradeToken->markAsUsed();
+                }
+
+                DB::commit();
+
+                Log::info('Pakasir webhook: Payment processed and upgrade completed', [
+                    'order_id' => $orderId,
+                    'payment_id' => $payment->id,
+                    'user_id' => $user->id,
+                    'phone_number' => $user->phone_number,
+                    'old_plan' => $oldPlan,
+                    'new_plan' => $payment->plan,
+                    'amount' => $amount,
+                    'payment_method' => $paymentMethod,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment processed and upgrade completed',
+                    'data' => [
+                        'order_id' => $orderId,
+                        'payment_id' => $payment->id,
+                        'user_id' => $user->id,
+                        'old_plan' => $oldPlan,
+                        'new_plan' => $payment->plan,
+                        'amount' => $amount,
+                    ],
+                ], 200);
+            }
+
+            // Fallback: Try to find payment record or upgrade token by order_id (backward compatibility)
             // Format order_id might be: "UPGRADE_{token}" or custom format
             $upgradeToken = null;
             $user = null;
 
-            // Check if order_id is an upgrade token
+            // Check if order_id is an upgrade token (64 chars)
             if (strlen($orderId) === 64) {
                 // Might be a direct token
                 $upgradeToken = UpgradeToken::where('token', $orderId)
@@ -113,14 +221,13 @@ class PakasirWebhookController extends Controller
             } else {
                 // Check if order_id follows pattern like "UPGRADE_{token}"
                 if (str_starts_with($orderId, 'UPGRADE_')) {
-                    $token = substr($orderId, 8);
-                    $upgradeToken = UpgradeToken::where('token', $token)
-                        ->whereNull('used_at')
-                        ->first();
+                    // Extract token from order_id format: UPGRADE_{timestamp}_{random}
+                    // For backward compatibility, try to find by token if it's in the format
+                    // But new format doesn't include token, so skip this
                 }
             }
 
-            // If upgrade token found, process upgrade
+            // If upgrade token found (backward compatibility), process upgrade
             if ($upgradeToken) {
                 $user = User::find($upgradeToken->user_id);
 
@@ -157,7 +264,6 @@ class PakasirWebhookController extends Controller
                 }
 
                 // Validate plan upgrade
-                // Hierarchy: free < pro < vip (unlimited is special case)
                 $planHierarchy = ['free' => 0, 'starter' => 1, 'pro' => 2, 'vip' => 3, 'unlimited' => 999];
                 $currentPlanLevel = $planHierarchy[$user->plan] ?? 0;
                 $newPlanLevel = $planHierarchy[$pricing->plan] ?? 0;
@@ -178,6 +284,22 @@ class PakasirWebhookController extends Controller
                     ], 400);
                 }
 
+                // Create payment record for backward compatibility
+                $payment = Payment::createPayment([
+                    'order_id' => $orderId,
+                    'user_id' => $user->id,
+                    'upgrade_token_id' => $upgradeToken->id,
+                    'plan' => $pricing->plan,
+                    'amount' => $amount,
+                    'fee' => 0,
+                    'total_payment' => $amount,
+                    'status' => 'completed',
+                    'payment_method' => $paymentMethod,
+                    'pakasir_order_id' => $orderId,
+                    'completed_at' => $completedAt ? now()->parse($completedAt) : now(),
+                    'metadata' => ['webhook_payload' => $request->all()],
+                ]);
+
                 // Process upgrade
                 $oldPlan = $user->plan;
                 $user->plan = $pricing->plan;
@@ -189,8 +311,9 @@ class PakasirWebhookController extends Controller
 
                 DB::commit();
 
-                Log::info('Pakasir webhook: Upgrade processed successfully', [
+                Log::info('Pakasir webhook: Upgrade processed successfully (backward compatibility)', [
                     'order_id' => $orderId,
+                    'payment_id' => $payment->id,
                     'user_id' => $user->id,
                     'phone_number' => $user->phone_number,
                     'old_plan' => $oldPlan,
@@ -204,6 +327,7 @@ class PakasirWebhookController extends Controller
                     'message' => 'Payment processed and upgrade completed',
                     'data' => [
                         'order_id' => $orderId,
+                        'payment_id' => $payment->id,
                         'user_id' => $user->id,
                         'old_plan' => $oldPlan,
                         'new_plan' => $pricing->plan,
@@ -212,8 +336,7 @@ class PakasirWebhookController extends Controller
                 ], 200);
             }
 
-            // If no upgrade token found, just log the payment
-            // You can extend this to handle other payment types
+            // If no payment or upgrade token found, just log the payment
             DB::commit();
 
             Log::info('Pakasir webhook: Payment received but no matching order found', [

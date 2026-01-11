@@ -161,7 +161,8 @@
     if (!expiredAt) return '';
     
     const now = new Date();
-    const diff = expiredAt - now;
+    const expired = expiredAt instanceof Date ? expiredAt : new Date(expiredAt);
+    const diff = expired.getTime() - now.getTime();
     
     if (diff <= 0) return 'Kedaluwarsa';
     
@@ -188,7 +189,8 @@
     timerInterval = setInterval(() => {
       timeRemaining = formatTimeRemaining(expiredAt);
       const now = new Date();
-      if (expiredAt - now <= 0) {
+      const expired = expiredAt instanceof Date ? expiredAt : new Date(expiredAt);
+      if (expired.getTime() - now.getTime() <= 0) {
         clearInterval(timerInterval);
         paymentStatus = 'expired';
         timeRemaining = 'Kedaluwarsa';
@@ -225,101 +227,89 @@
     </div>
   {:else if checkoutData}
     <div class="checkout-container">
-      <div class="header">
-        <h1>Checkout</h1>
-        <p class="subtitle">Selesaikan pembayaran untuk upgrade paket Anda</p>
-      </div>
-
-      <div class="checkout-content">
-        <!-- Order Summary -->
-        <div class="order-summary">
-          <h2>Ringkasan Pesanan</h2>
-          <div class="summary-item">
-            <span class="label">Paket</span>
-            <span class="value">{getPlanName(checkoutData.plan)}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">Harga</span>
-            <span class="value">{formatPrice(checkoutData.amount)}</span>
-          </div>
-          {#if checkoutData.fee > 0}
-            <div class="summary-item">
-              <span class="label">Biaya Admin</span>
-              <span class="value">{formatPrice(checkoutData.fee)}</span>
+      <!-- Compact Header with Order Summary -->
+      <div class="checkout-header">
+        <div class="header-content">
+          <h1>Bayar Sekarang</h1>
+          <div class="order-summary-compact">
+            <div class="summary-row">
+              <span class="summary-label">Paket {getPlanName(checkoutData.plan)}</span>
+              <span class="summary-total">{formatPrice(checkoutData.total_payment)}</span>
             </div>
-          {/if}
-          <div class="summary-divider"></div>
-          <div class="summary-item total">
-            <span class="label">Total Pembayaran</span>
-            <span class="value">{formatPrice(checkoutData.total_payment)}</span>
+            {#if checkoutData.fee > 0}
+              <div class="summary-note">Termasuk biaya admin {formatPrice(checkoutData.fee)}</div>
+            {/if}
           </div>
         </div>
-
-        <!-- Payment Method -->
-        <div class="payment-section">
-          <h2>Metode Pembayaran</h2>
-          <div class="payment-method">
-            <div class="payment-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-            </div>
-            <div class="payment-info">
-              <h3>QRIS</h3>
-              <p>Scan QR code dengan aplikasi e-wallet atau mobile banking Anda</p>
-            </div>
+        {#if expiredAt}
+          <div class="timer-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>{timeRemaining || formatTimeRemaining(expiredAt)}</span>
           </div>
+        {/if}
+      </div>
 
-          {#if expiredAt}
-            <div class="expiry-warning">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-              <span>Waktu tersisa: <strong>{timeRemaining || formatTimeRemaining(expiredAt)}</strong></span>
-            </div>
-          {/if}
-
-          <!-- QR Code -->
-          <div class="qris-container">
+      <!-- Main Payment Area -->
+      <div class="payment-main">
+        <!-- QR Code Section -->
+        <div class="qris-section">
+          <div class="qris-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Scan QR Code untuk Bayar</span>
+          </div>
+          
+          <div class="qris-wrapper">
             {#if paymentUrl}
-              <div class="qris-iframe-wrapper">
-                <iframe
-                  src="{paymentUrl}"
-                  class="qris-iframe"
-                  frameborder="0"
-                  allow="payment"
-                  title="Pakasir Payment"
-                ></iframe>
-              </div>
+              <iframe
+                src="{paymentUrl}"
+                class="qris-iframe"
+                frameborder="0"
+                allow="payment"
+                title="QRIS Payment"
+              ></iframe>
               <div class="qris-fallback">
-                <p>Jika QR code tidak muncul, klik tombol di bawah:</p>
-                <a href={paymentUrl} target="_blank" rel="noopener noreferrer" class="payment-link-button">
-                  Buka Halaman Pembayaran
+                <a href={paymentUrl} target="_blank" rel="noopener noreferrer" class="open-payment-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  Buka di Halaman Baru
                 </a>
               </div>
             {/if}
           </div>
+        </div>
 
-          <div class="payment-instructions">
-            <h3>Cara Pembayaran:</h3>
-            <ol>
-              <li>Buka aplikasi e-wallet atau mobile banking Anda</li>
-              <li>Pilih fitur Scan QR atau QRIS</li>
-              <li>Scan QR code di atas</li>
-              <li>Periksa nominal dan konfirmasi pembayaran</li>
-              <li>Tunggu konfirmasi otomatis (halaman akan otomatis terupdate)</li>
-            </ol>
+        <!-- Simple Instructions -->
+        <div class="instructions">
+          <div class="instruction-step">
+            <div class="step-number">1</div>
+            <span>Buka aplikasi e-wallet atau mobile banking</span>
+          </div>
+          <div class="instruction-step">
+            <div class="step-number">2</div>
+            <span>Scan QR code di atas</span>
+          </div>
+          <div class="instruction-step">
+            <div class="step-number">3</div>
+            <span>Konfirmasi pembayaran</span>
           </div>
         </div>
       </div>
 
+      <!-- Footer -->
       <div class="checkout-footer">
-        <a href="/" class="cancel-link">Batalkan Pembayaran</a>
         <p class="footer-note">
-          Setelah pembayaran berhasil, paket Anda akan otomatis di-upgrade
+          Pembayaran akan dikonfirmasi otomatis setelah berhasil
         </p>
+        <a href="/" class="cancel-link">Batalkan</a>
       </div>
     </div>
   {/if}
@@ -408,258 +398,198 @@
   .checkout-container {
     background: var(--color-card-bg);
     border-radius: 24px;
-    padding: 2.5rem;
-    max-width: 900px;
+    padding: 2rem;
+    max-width: 500px;
     width: 100%;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--color-border);
   }
 
-  .header {
+  .checkout-header {
     text-align: center;
     margin-bottom: 2rem;
+    position: relative;
   }
 
-  .header h1 {
-    font-size: 2.5rem;
+  .header-content h1 {
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--color-text-heading);
-    margin-bottom: 0.5rem;
-  }
-
-  .subtitle {
-    color: var(--color-text-body);
-    font-size: 1.125rem;
     margin-bottom: 1rem;
   }
 
-  .checkout-content {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .order-summary {
+  .order-summary-compact {
     background: var(--color-bg);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
     border: 1px solid var(--color-border);
-    height: fit-content;
   }
 
-  .order-summary h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--color-text-heading);
-    margin-bottom: 1rem;
-  }
-
-  .summary-item {
+  .summary-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    align-items: center;
+  }
+
+  .summary-label {
+    color: var(--color-text-body);
     font-size: 0.95rem;
   }
 
-  .summary-item.total {
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-    border-top: 2px solid var(--color-border);
-    font-size: 1.125rem;
+  .summary-total {
+    color: var(--color-primary);
+    font-size: 1.5rem;
     font-weight: 700;
   }
 
-  .summary-item .label {
-    color: var(--color-text-body);
+  .summary-note {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    text-align: right;
   }
 
-  .summary-item .value {
-    color: var(--color-text-heading);
+  .timer-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 20px;
+    color: #92400e;
+    font-size: 0.875rem;
     font-weight: 600;
   }
 
-  .summary-item.total .value {
-    color: var(--color-primary);
-    font-size: 1.25rem;
+  .timer-badge svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 
-  .summary-divider {
-    height: 1px;
-    background: var(--color-border);
-    margin: 0.75rem 0;
+  .payment-main {
+    margin-bottom: 2rem;
   }
 
-  .payment-section {
-    background: var(--color-bg);
-    border-radius: 16px;
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
+  .qris-section {
+    margin-bottom: 2rem;
   }
 
-  .payment-section h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--color-text-heading);
-    margin-bottom: 1rem;
-  }
-
-  .payment-method {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: var(--color-card-bg);
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
-    border: 1px solid var(--color-border);
-  }
-
-  .payment-icon {
-    width: 48px;
-    height: 48px;
-    background: var(--color-primary);
-    color: white;
-    border-radius: 12px;
+  .qris-label {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .payment-icon svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .payment-info h3 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--color-text-heading);
-    margin-bottom: 0.25rem;
-  }
-
-  .payment-info p {
-    font-size: 0.875rem;
-    color: var(--color-text-body);
-    margin: 0;
-  }
-
-  .expiry-warning {
-    display: flex;
-    align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: #fef3c7;
-    border: 1px solid #fbbf24;
-    border-radius: 12px;
-    color: #92400e;
-    font-size: 0.875rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-heading);
+    font-weight: 600;
+    font-size: 0.95rem;
   }
 
-  .expiry-warning svg {
+  .qris-label svg {
     width: 20px;
     height: 20px;
-    flex-shrink: 0;
+    color: var(--color-primary);
   }
 
-  .qris-container {
-    background: var(--color-card-bg);
+  .qris-wrapper {
+    background: white;
     border-radius: 16px;
-    padding: 2rem;
+    padding: 1.5rem;
+    border: 2px solid var(--color-border);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 1.5rem;
-    border: 2px solid var(--color-border);
-    min-height: 300px;
-  }
-
-  .qris-image {
-    max-width: 100%;
-    height: auto;
-    border-radius: 12px;
-  }
-
-  .qris-iframe-wrapper {
-    width: 100%;
-    height: 100%;
-    min-height: 300px;
+    min-height: 320px;
+    position: relative;
   }
 
   .qris-iframe {
     width: 100%;
-    height: 100%;
     min-height: 300px;
     border: none;
     border-radius: 12px;
+    background: white;
   }
 
   .qris-fallback {
     margin-top: 1rem;
-    text-align: center;
-    padding: 1rem;
-    background: var(--color-bg);
-    border-radius: 12px;
     width: 100%;
   }
 
-  .qris-fallback p {
-    font-size: 0.875rem;
-    color: var(--color-text-body);
-    margin-bottom: 0.75rem;
-  }
-
-  .payment-link-button {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
+  .open-payment-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
     background: var(--color-primary);
     color: white;
     text-decoration: none;
-    border-radius: 12px;
+    border-radius: 10px;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
   }
 
-  .payment-link-button:hover {
+  .open-payment-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .open-payment-btn:hover {
     background: var(--color-primary-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
 
-  .payment-instructions {
-    background: var(--color-card-bg);
-    border-radius: 12px;
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
+  .instructions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .payment-instructions h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-text-heading);
-    margin-bottom: 1rem;
-  }
-
-  .payment-instructions ol {
-    margin: 0;
-    padding-left: 1.5rem;
+  .instruction-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--color-bg);
+    border-radius: 10px;
+    font-size: 0.9rem;
     color: var(--color-text-body);
-    font-size: 0.875rem;
-    line-height: 1.8;
   }
 
-  .payment-instructions li {
-    margin-bottom: 0.5rem;
+  .step-number {
+    width: 28px;
+    height: 28px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
   }
 
   .checkout-footer {
     text-align: center;
-    padding-top: 2rem;
+    padding-top: 1.5rem;
     border-top: 1px solid var(--color-border);
+  }
+
+  .footer-note {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin: 0 0 1rem 0;
+    line-height: 1.5;
   }
 
   .cancel-link {
@@ -667,18 +597,12 @@
     color: var(--color-text-body);
     text-decoration: none;
     font-size: 0.875rem;
-    margin-bottom: 0.75rem;
+    font-weight: 500;
     transition: color 0.2s;
   }
 
   .cancel-link:hover {
     color: var(--color-text-heading);
-  }
-
-  .footer-note {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin: 0;
   }
 
   @media (max-width: 768px) {
@@ -688,27 +612,43 @@
 
     .checkout-container {
       padding: 1.5rem;
+      max-width: 100%;
     }
 
-    .checkout-content {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
+    .checkout-header {
+      margin-bottom: 1.5rem;
     }
 
-    .header h1 {
-      font-size: 2rem;
+    .header-content h1 {
+      font-size: 1.5rem;
     }
 
-    .qris-container {
-      min-height: 250px;
+    .timer-badge {
+      position: static;
+      margin: 0.75rem auto 0;
+      display: inline-flex;
     }
 
-    .qris-iframe-wrapper {
-      min-height: 250px;
+    .qris-wrapper {
+      min-height: 280px;
+      padding: 1rem;
     }
 
     .qris-iframe {
-      min-height: 250px;
+      min-height: 260px;
+    }
+
+    .summary-total {
+      font-size: 1.25rem;
+    }
+
+    .instructions {
+      gap: 0.5rem;
+    }
+
+    .instruction-step {
+      font-size: 0.85rem;
+      padding: 0.625rem;
     }
   }
 </style>

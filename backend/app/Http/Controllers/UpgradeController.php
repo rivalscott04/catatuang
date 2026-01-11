@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\UpgradeToken;
 use App\Models\User;
 use App\Models\Pricing;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class UpgradeController extends Controller
 {
@@ -179,15 +181,43 @@ class UpgradeController extends Controller
         }
 
         try {
-            // Generate order_id using token (Pakasir will use this in webhook)
-            $orderId = $request->token; // Use token as order_id for webhook matching
+            DB::beginTransaction();
+
+            // Check if there's already a pending payment for this token and plan
+            $existingPayment = Payment::where('upgrade_token_id', $upgradeToken->id)
+                ->where('plan', $request->plan)
+                ->where('status', 'pending')
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if ($existingPayment) {
+                // Return existing payment
+                $pakasirSlug = env('PAKASIR_PROJECT_SLUG', 'catatuang');
+                $paymentUrl = "https://app.pakasir.com/pay/{$pakasirSlug}/{$existingPayment->amount}?order_id={$existingPayment->order_id}&qris_only=1";
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Checkout berhasil dibuat',
+                    'data' => [
+                        'plan' => $existingPayment->plan,
+                        'amount' => $existingPayment->amount,
+                        'fee' => $existingPayment->fee,
+                        'total_payment' => $existingPayment->total_payment,
+                        'payment_url' => $paymentUrl,
+                        'order_id' => $existingPayment->order_id,
+                        'expired_at' => $existingPayment->expires_at->toIso8601String(),
+                    ],
+                ]);
+            }
+
+            // Generate unique order_id
+            $orderId = Payment::generateOrderId();
             
             // Get Pakasir configuration
             $pakasirSlug = env('PAKASIR_PROJECT_SLUG', 'catatuang');
             $amount = (int) $pricing->price;
-            
-            // Build Pakasir payment URL with QRIS only
-            $paymentUrl = "https://app.pakasir.com/pay/{$pakasirSlug}/{$amount}?order_id={$orderId}&qris_only=1";
             
             // Calculate fee (if any) - Pakasir typically charges around 0.5-1% fee
             // For now, we'll assume no additional fee on top of pricing
@@ -197,12 +227,31 @@ class UpgradeController extends Controller
             // Calculate expiry time (15 minutes from now)
             $expiredAt = now()->addMinutes(15);
 
+            // Create payment record
+            $payment = Payment::createPayment([
+                'order_id' => $orderId,
+                'user_id' => $user->id,
+                'upgrade_token_id' => $upgradeToken->id,
+                'plan' => $request->plan,
+                'amount' => $amount,
+                'fee' => $fee,
+                'total_payment' => $totalPayment,
+                'status' => 'pending',
+                'expires_at' => $expiredAt,
+            ]);
+            
+            // Build Pakasir payment URL with QRIS only
+            $paymentUrl = "https://app.pakasir.com/pay/{$pakasirSlug}/{$amount}?order_id={$orderId}&qris_only=1";
+
+            DB::commit();
+
             Log::info('Checkout initialized', [
                 'user_id' => $user->id,
                 'phone_number' => $user->phone_number,
                 'plan' => $request->plan,
                 'amount' => $amount,
                 'order_id' => $orderId,
+                'payment_id' => $payment->id,
             ]);
 
             return response()->json([
@@ -219,6 +268,7 @@ class UpgradeController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Checkout failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
@@ -256,7 +306,25 @@ class UpgradeController extends Controller
             ], 404);
         }
 
-        // Check if token has been used (payment completed)
+        // Check payment status from payments table
+        $payment = Payment::where('upgrade_token_id', $upgradeToken->id)
+            ->where('status', '!=', 'cancelled')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($payment) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $payment->status,
+                    'order_id' => $payment->order_id,
+                    'completed_at' => $payment->completed_at?->toIso8601String(),
+                    'expires_at' => $payment->expires_at?->toIso8601String(),
+                ],
+            ]);
+        }
+
+        // Fallback: check if token has been used (payment completed)
         if ($upgradeToken->used_at) {
             return response()->json([
                 'success' => true,
