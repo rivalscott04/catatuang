@@ -192,8 +192,13 @@
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Redirect to success page
-        window.location.href = data.data.redirect_url;
+        // Redirect to checkout page
+        if (data.data.redirect_url) {
+          window.location.href = data.data.redirect_url;
+        } else {
+          // Fallback: redirect to checkout with token and plan
+          window.location.href = `/checkout?token=${token}&plan=${selectedPlan}`;
+        }
       } else {
         error = data.message || 'Gagal memproses upgrade';
         processing = false;

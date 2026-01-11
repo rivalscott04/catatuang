@@ -10,6 +10,7 @@ use App\Http\Controllers\Internal\ReportController;
 use App\Http\Controllers\Internal\UploadController;
 use App\Http\Controllers\Internal\UpgradeController as InternalUpgradeController;
 use App\Http\Controllers\UpgradeController;
+use App\Http\Controllers\PakasirWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,7 +34,13 @@ Route::get('/pricing', [\App\Http\Controllers\PricingController::class, 'index']
 Route::get('/upgrade/validate/{token}', [UpgradeController::class, 'validateToken']);
 Route::get('/upgrade/{token}', [UpgradeController::class, 'getPlans']);
 Route::post('/upgrade/process', [UpgradeController::class, 'processUpgrade']);
+Route::post('/upgrade/checkout', [UpgradeController::class, 'checkout']);
+Route::get('/upgrade/payment-status', [UpgradeController::class, 'paymentStatus']);
 Route::get('/upgrade/success', [UpgradeController::class, 'getSuccessInfo']);
+
+// Public webhook endpoints (no authentication required)
+Route::get('/webhook/pakasir', [PakasirWebhookController::class, 'healthCheck']);
+Route::post('/webhook/pakasir', [PakasirWebhookController::class, 'handle']);
 
 /*
 |--------------------------------------------------------------------------

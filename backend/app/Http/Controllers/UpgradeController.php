@@ -42,8 +42,8 @@ class UpgradeController extends Controller
                 'user' => [
                     'phone_number' => $user->phone_number,
                     'name' => $user->name,
-                    'current_plan' => $user->plan,
                 ],
+                'current_plan' => $user->plan,
             ],
         ]);
     }
@@ -110,10 +110,10 @@ class UpgradeController extends Controller
     }
 
     /**
-     * POST /api/upgrade/process
-     * Process upgrade payment (placeholder for now)
+     * POST /api/upgrade/checkout
+     * Generate Pakasir payment URL for checkout
      */
-    public function processUpgrade(Request $request)
+    public function checkout(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'token' => 'required|string|size:64',
@@ -178,43 +178,48 @@ class UpgradeController extends Controller
             ], 400);
         }
 
-        // TODO: Integrate with payment gateway here
-        // For now, we'll simulate successful payment
-        // In production, this should:
-        // 1. Create payment record
-        // 2. Redirect to payment gateway
-        // 3. Handle callback from payment gateway
-
-        // Simulate payment success (PLACEHOLDER)
         try {
-            // Update user plan
-            $oldPlan = $user->plan;
-            $user->plan = $request->plan;
-            $user->initializeSubscription($request->plan);
-            $user->save();
+            // Generate order_id using token (Pakasir will use this in webhook)
+            $orderId = $request->token; // Use token as order_id for webhook matching
+            
+            // Get Pakasir configuration
+            $pakasirSlug = env('PAKASIR_PROJECT_SLUG', 'catatuang');
+            $amount = (int) $pricing->price;
+            
+            // Build Pakasir payment URL with QRIS only
+            $paymentUrl = "https://app.pakasir.com/pay/{$pakasirSlug}/{$amount}?order_id={$orderId}&qris_only=1";
+            
+            // Calculate fee (if any) - Pakasir typically charges around 0.5-1% fee
+            // For now, we'll assume no additional fee on top of pricing
+            $fee = 0;
+            $totalPayment = $amount + $fee;
+            
+            // Calculate expiry time (15 minutes from now)
+            $expiredAt = now()->addMinutes(15);
 
-            // Mark token as used
-            $upgradeToken->markAsUsed();
-
-            // Log upgrade
-            Log::info('User upgraded plan', [
+            Log::info('Checkout initialized', [
                 'user_id' => $user->id,
                 'phone_number' => $user->phone_number,
-                'old_plan' => $oldPlan,
-                'new_plan' => $request->plan,
+                'plan' => $request->plan,
+                'amount' => $amount,
+                'order_id' => $orderId,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Upgrade berhasil!',
+                'message' => 'Checkout berhasil dibuat',
                 'data' => [
-                    'old_plan' => $oldPlan,
-                    'new_plan' => $user->plan,
-                    'redirect_url' => url("/upgrade/success?token={$request->token}"),
+                    'plan' => $request->plan,
+                    'amount' => $amount,
+                    'fee' => $fee,
+                    'total_payment' => $totalPayment,
+                    'payment_url' => $paymentUrl,
+                    'order_id' => $orderId,
+                    'expired_at' => $expiredAt->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Upgrade failed', [
+            Log::error('Checkout failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
                 'plan' => $request->plan,
@@ -222,9 +227,82 @@ class UpgradeController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memproses upgrade',
+                'message' => 'Terjadi kesalahan saat membuat checkout',
             ], 500);
         }
+    }
+
+    /**
+     * GET /api/upgrade/payment-status
+     * Check payment status for upgrade
+     */
+    public function paymentStatus(Request $request)
+    {
+        $token = $request->query('token');
+
+        if (!$token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak ditemukan',
+            ], 400);
+        }
+
+        $upgradeToken = UpgradeToken::where('token', $token)->first();
+
+        if (!$upgradeToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak valid',
+            ], 404);
+        }
+
+        // Check if token has been used (payment completed)
+        if ($upgradeToken->used_at) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'completed',
+                    'used_at' => $upgradeToken->used_at->toIso8601String(),
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'status' => 'pending',
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/upgrade/process
+     * Process upgrade payment (placeholder for now)
+     * This is kept for backward compatibility but now redirects to checkout
+     */
+    public function processUpgrade(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => 'required|string|size:64',
+            'plan' => 'required|string|in:pro,vip',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Redirect to checkout page
+        return response()->json([
+            'success' => true,
+            'message' => 'Redirect ke checkout',
+            'data' => [
+                'redirect_url' => url("/checkout?token={$request->token}&plan={$request->plan}"),
+            ],
+        ]);
     }
 
     /**

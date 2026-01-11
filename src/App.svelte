@@ -4,6 +4,7 @@
   import Privacy from "./lib/Privacy.svelte";
   import SuccessModal from "./lib/SuccessModal.svelte";
   import UpgradePage from "./lib/UpgradePage.svelte";
+  import CheckoutPage from "./lib/CheckoutPage.svelte";
   import { onMount } from "svelte";
 
   // API helper - same as admin
@@ -44,7 +45,7 @@
   let loading = false;
   let selectedPlan = "free"; // free, pro, vip
   let isPlanLocked = false; // true jika plan sudah ditentukan dari tombol
-  let currentPage = "home"; // home, syarat, privasi, upgrade, upgrade-success
+  let currentPage = "home"; // home, syarat, privasi, upgrade, upgrade-success, checkout
   let registeredPhone = "";
   let botNumber = "6281234567890"; // Default, akan diambil dari API saat mount
   let pricings = [];
@@ -104,6 +105,12 @@
     const path = window.location.pathname;
     const hash = window.location.hash;
     const search = window.location.search;
+
+    // Check for checkout page
+    if (path === "/checkout") {
+      currentPage = "checkout";
+      return;
+    }
 
     // Check for upgrade page
     if (path.match(/^\/upgrade\/[a-zA-Z0-9]{64}$/)) {
@@ -405,7 +412,9 @@
   </nav>
 
   <main>
-    {#if currentPage === "upgrade"}
+    {#if currentPage === "checkout"}
+      <CheckoutPage />
+    {:else if currentPage === "upgrade"}
       <UpgradePage />
     {:else if currentPage === "upgrade-success"}
       <UpgradePage />

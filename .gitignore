@@ -27,6 +27,8 @@ dist/
 # Documentation & Workflows (internal docs)
 wa-finance-bot-docs/
 n8n-workflows/
+newn8n/
+newn8n_worked/
 
 # n8n data (jika ada di local)
 .n8n/
