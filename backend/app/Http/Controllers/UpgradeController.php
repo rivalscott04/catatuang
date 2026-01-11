@@ -295,12 +295,63 @@ class UpgradeController extends Controller
             ], 422);
         }
 
-        // Redirect to checkout page
+        $upgradeToken = UpgradeToken::findValid($request->token);
+
+        if (!$upgradeToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak valid atau sudah expired',
+            ], 404);
+        }
+
+        $user = User::where('phone_number', $upgradeToken->phone_number)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan',
+            ], 404);
+        }
+
+        // Explicitly reject unlimited plan
+        if ($request->plan === 'unlimited') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Paket unlimited tidak tersedia untuk upgrade',
+            ], 400);
+        }
+
+        // Check if plan is available
+        $pricing = Pricing::where('plan', $request->plan)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$pricing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Paket tidak tersedia',
+            ], 404);
+        }
+
+        // Check if user is already on this plan or higher
+        $planHierarchy = ['free' => 0, 'pro' => 1, 'vip' => 2];
+        $currentPlanLevel = $planHierarchy[$user->plan] ?? 0;
+        $newPlanLevel = $planHierarchy[$request->plan] ?? 0;
+
+        if ($currentPlanLevel >= $newPlanLevel) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda sudah menggunakan paket yang sama atau lebih tinggi',
+            ], 400);
+        }
+
+        // Return success - frontend will handle redirect to checkout
         return response()->json([
             'success' => true,
             'message' => 'Redirect ke checkout',
             'data' => [
-                'redirect_url' => url("/checkout?token={$request->token}&plan={$request->plan}"),
+                'token' => $request->token,
+                'plan' => $request->plan,
             ],
         ]);
     }

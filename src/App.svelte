@@ -139,6 +139,20 @@
     window.addEventListener("hashchange", handleRouteChange);
     window.addEventListener("popstate", handleRouteChange);
     
+    // Also listen for pushstate to handle programmatic navigation
+    const originalPushState = history.pushState;
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args);
+      handleRouteChange();
+    };
+    
+    // Also handle replaceState
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(history, args);
+      handleRouteChange();
+    };
+    
     // Fetch bot number from backend
     (async () => {
       try {
