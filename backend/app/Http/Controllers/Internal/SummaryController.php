@@ -39,7 +39,7 @@ class SummaryController extends Controller
 
         // Check subscription active
         if (!$user->isSubscriptionActive()) {
-            return $this->subscriptionExpiredResponse($user);
+            return $this->subscriptionExpiredResponse($user, 'rekap_hari_ini');
         }
 
         $today = Carbon::now(config('app.timezone'))->toDateString();
@@ -85,7 +85,7 @@ class SummaryController extends Controller
 
         // Check subscription active
         if (!$user->isSubscriptionActive()) {
-            return $this->subscriptionExpiredResponse($user);
+            return $this->subscriptionExpiredResponse($user, 'rekap_detail');
         }
 
         $today = Carbon::now(config('app.timezone'))->toDateString();
@@ -137,7 +137,7 @@ class SummaryController extends Controller
 
         // Check subscription active
         if (!$user->isSubscriptionActive()) {
-            return $this->subscriptionExpiredResponse($user);
+            return $this->subscriptionExpiredResponse($user, 'cek_saldo');
         }
 
         $now = Carbon::now(config('app.timezone'));
@@ -180,22 +180,50 @@ class SummaryController extends Controller
     }
 
     /**
-     * Subscription expired response with response_style
+     * Subscription expired response with response_style and contextual action
+     * 
+     * @param User $user
+     * @param string $action Action context: 'cek_saldo', 'rekap_hari_ini', 'rekap_detail', 'catat_transaksi'
+     * @return JsonResponse
      */
-    private function subscriptionExpiredResponse(User $user): JsonResponse
+    private function subscriptionExpiredResponse(User $user, string $action = 'cek_saldo'): JsonResponse
     {
         $style = $user->response_style ?? 'santai';
 
+        // Define messages for each action and style
         $messages = [
-            'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa cek saldo!',
-            'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk menggunakan fitur ini.',
-            'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur ini.',
-            'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa cek saldo!',
+            'cek_saldo' => [
+                'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa cek saldo!',
+                'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa cek saldo!',
+                'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk cek saldo.',
+                'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur cek saldo.',
+            ],
+            'rekap_hari_ini' => [
+                'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa lihat rekap hari ini!',
+                'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa lihat rekap hari ini!',
+                'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk melihat rekap hari ini.',
+                'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur rekap hari ini.',
+            ],
+            'rekap_detail' => [
+                'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa lihat rekap detail!',
+                'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa lihat rekap detail!',
+                'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk melihat rekap detail.',
+                'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur rekap detail.',
+            ],
+            'catat_transaksi' => [
+                'gaul' => 'Eits, subscription kamu udah expired nih. Perpanjang dulu dong biar bisa catat transaksi!',
+                'santai' => 'Wah, subscription kamu sudah expired nih. Perpanjang dulu yuk biar bisa catat transaksi!',
+                'netral' => 'Subscription Anda sudah expired. Silakan perpanjang subscription untuk mencatat transaksi.',
+                'formal' => 'Maaf, subscription Anda telah berakhir. Mohon perpanjang subscription terlebih dahulu untuk mengakses fitur pencatatan transaksi.',
+            ],
         ];
+
+        // Get message for the specific action and style, fallback to netral if not found
+        $message = $messages[$action][$style] ?? $messages[$action]['netral'] ?? $messages['cek_saldo']['netral'];
 
         return response()->json([
             'success' => false,
-            'message' => $messages[$style] ?? $messages['netral'],
+            'message' => $message,
             'errors' => [
                 'subscription' => ['Subscription expired'],
             ],
@@ -203,6 +231,7 @@ class SummaryController extends Controller
                 'current_plan' => $user->plan,
                 'response_style' => $style,
                 'reason' => 'subscription_expired',
+                'action' => $action,
             ],
         ], 403);
     }
