@@ -26,6 +26,10 @@ jobs:
             echo "Nyambung ke server... lanjut git pull ya!"
             cd /var/www/catatuang || exit 1
             
+            # Set git config untuk handle divergent branches (production harus selalu ikut remote)
+            git config pull.rebase false
+            git config pull.ff only || true
+            
             # Backup .env.prod jika ada (biar ga kehapus pas reset)
             ENV_PROD_BACKUP=""
             if [ -f ".env.prod" ]; then

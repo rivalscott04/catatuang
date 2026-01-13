@@ -15,12 +15,12 @@ return [
     |
     */
 
-    'paths' => ['*'],
+    'paths' => ['api/*', 'admin/*', 'csrf-token'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => array_filter(
-        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,https://catatuang.click,https://www.catatuang.click,https://catatuang.rivaldev.site')),
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,https://catatuang.click,https://www.catatuang.click')),
         function($origin) {
             return !empty(trim($origin));
         }
@@ -32,7 +32,7 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 3600,
 
     'supports_credentials' => true,
 

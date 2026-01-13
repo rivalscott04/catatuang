@@ -11,6 +11,32 @@ Route::get('/csrf-token', function () {
     return response()->json(['token' => csrf_token()]);
 });
 
+// Handle OPTIONS preflight for CORS - must be before other routes
+Route::options('/admin/{any?}', function () {
+    $origin = request()->header('Origin');
+    $allowedOrigins = array_filter(
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,https://catatuang.click,https://www.catatuang.click,https://catatuang.rivaldev.site')),
+        function($o) {
+            return !empty(trim($o));
+        }
+    );
+    
+    // Check if origin is allowed
+    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : null;
+    
+    $response = response('', 200);
+    
+    if ($allowedOrigin) {
+        $response->header('Access-Control-Allow-Origin', $allowedOrigin);
+        $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        $response->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin');
+        $response->header('Access-Control-Allow-Credentials', 'true');
+        $response->header('Access-Control-Max-Age', '3600');
+    }
+    
+    return $response;
+})->where('any', '.*');
+
 // Admin API routes only (no views, frontend handles routing)
 Route::prefix('admin')->group(function () {
     // Public admin API routes with enhanced rate limiting and anti-bot protection
