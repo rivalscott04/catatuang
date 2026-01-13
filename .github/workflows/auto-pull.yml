@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
 
 jobs:
   deploy:
@@ -32,14 +33,25 @@ jobs:
               echo "Backup .env.prod berhasil (file akan di-restore setelah reset)"
             fi
             
+            # Deteksi branch yang aktif (master atau main)
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            REMOTE_BRANCH="master"
+            if git ls-remote --heads origin main | grep -q main; then
+              REMOTE_BRANCH="main"
+            elif git ls-remote --heads origin master | grep -q master; then
+              REMOTE_BRANCH="master"
+            fi
+            
+            echo "Using branch: $REMOTE_BRANCH"
+            
             # Fetch dulu untuk update remote refs
             echo "Fetching latest changes dari remote..."
-            git fetch origin master
+            git fetch origin $REMOTE_BRANCH
             
             # Cek apakah ada perubahan lokal yang konflik
-            if ! git diff --quiet HEAD origin/master || ! git diff --cached --quiet; then
-              echo "Ada perubahan lokal yang konflik, reset ke origin/master..."
-              git reset --hard origin/master
+            if ! git diff --quiet HEAD origin/$REMOTE_BRANCH || ! git diff --cached --quiet; then
+              echo "Ada perubahan lokal yang konflik, reset ke origin/$REMOTE_BRANCH..."
+              git reset --hard origin/$REMOTE_BRANCH
               git clean -fd
               
               # Restore .env.prod jika sebelumnya ada
@@ -52,9 +64,9 @@ jobs:
             fi
             
             # Pull perubahan terbaru
-            git pull origin master || {
-              echo "Pull masih gagal, force reset ke origin/master..."
-              git reset --hard origin/master
+            git pull origin $REMOTE_BRANCH || {
+              echo "Pull masih gagal, force reset ke origin/$REMOTE_BRANCH..."
+              git reset --hard origin/$REMOTE_BRANCH
               git clean -fd
               
               # Restore .env.prod jika sebelumnya ada
