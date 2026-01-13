@@ -72,18 +72,77 @@
     }
   });
 
+  // Helper function untuk fetch dengan retry dan timeout
+  /**
+   * @param {string} url
+   * @param {RequestInit} options
+   * @param {number} maxRetries
+   * @returns {Promise<Response>}
+   */
+  async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                     /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    // Safari butuh timeout lebih lama dan retry lebih banyak
+    const timeout = isSafari ? 30000 : 15000; // 30s untuk Safari, 15s untuk browser lain
+    const retries = isSafari ? 5 : maxRetries;
+    
+    for (let attempt = 0; attempt < retries; attempt++) {
+      let timeoutId = null;
+      try {
+        // Buat AbortController untuk timeout
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        /** @type {RequestInit} */
+        const fetchOptions = {
+          ...options,
+          signal: controller.signal,
+          // Safari kadang perlu mode: 'cors' explicit
+          mode: /** @type {RequestMode} */ ('cors'),
+          credentials: /** @type {RequestCredentials} */ ('include'),
+          headers: {
+            'Accept': 'application/json',
+            ...options.headers,
+          },
+        };
+        
+        const response = await fetch(url, fetchOptions);
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        return response;
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Jika bukan network error atau abort, langsung throw
+        if (err.name !== 'AbortError' && err.name !== 'TypeError' && !err.message?.includes('fetch')) {
+          throw err;
+        }
+        
+        // Jika sudah attempt terakhir, throw error
+        if (attempt === retries - 1) {
+          throw new Error(`Gagal menghubungi server setelah ${retries} kali percobaan`);
+        }
+        
+        // Exponential backoff: tunggu lebih lama setiap retry
+        const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        console.log(`Retry attempt ${attempt + 1}/${retries} untuk ${url}`);
+      }
+    }
+  }
+
   async function validateToken() {
     try {
       console.log('Validating token:', token);
       console.log('API Base URL:', apiBaseUrl);
+      console.log('User Agent:', navigator.userAgent);
       
-      const response = await fetch(`${apiBaseUrl}/api/upgrade/validate/${token}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      const response = await fetchWithRetry(
+        `${apiBaseUrl}/api/upgrade/validate/${token}`,
+        { method: 'GET' }
+      );
 
       console.log('Validation response status:', response.status);
 
@@ -114,7 +173,16 @@
       }
     } catch (err) {
       console.error('Validation error:', err);
-      error = 'Terjadi kesalahan saat memvalidasi token. Pastikan koneksi internet Anda stabil.';
+      
+      // Berikan pesan error yang lebih informatif
+      if (err.message?.includes('Gagal menghubungi server')) {
+        error = 'Gagal menghubungi server. Silakan coba lagi atau pastikan koneksi internet Anda stabil.';
+      } else if (err.name === 'AbortError' || err.message?.includes('timeout')) {
+        error = 'Request timeout. Silakan coba lagi dengan koneksi yang lebih stabil.';
+      } else {
+        error = 'Terjadi kesalahan saat memvalidasi token. Silakan coba lagi atau hubungi support jika masalah berlanjut.';
+      }
+      
       loading = false;
     }
   }
@@ -123,13 +191,10 @@
     try {
       console.log('Loading plans for token:', token);
       
-      const response = await fetch(`${apiBaseUrl}/api/upgrade/${token}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      const response = await fetchWithRetry(
+        `${apiBaseUrl}/api/upgrade/${token}`,
+        { method: 'GET' }
+      );
 
       console.log('Load plans response status:', response.status);
 
@@ -172,7 +237,15 @@
       }
     } catch (err) {
       console.error('Load plans error:', err);
-      error = 'Terjadi kesalahan saat memuat paket. Pastikan koneksi internet Anda stabil.';
+      
+      if (err.message?.includes('Gagal menghubungi server')) {
+        error = 'Gagal menghubungi server saat memuat paket. Silakan coba lagi.';
+      } else if (err.name === 'AbortError' || err.message?.includes('timeout')) {
+        error = 'Request timeout saat memuat paket. Silakan coba lagi.';
+      } else {
+        error = 'Terjadi kesalahan saat memuat paket. Silakan coba lagi atau hubungi support jika masalah berlanjut.';
+      }
+      
       loading = false;
     }
   }
@@ -187,18 +260,19 @@
     error = '';
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/upgrade/process`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          token: token,
-          plan: selectedPlan,
-        }),
-      });
+      const response = await fetchWithRetry(
+        `${apiBaseUrl}/api/upgrade/process`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token: token,
+            plan: selectedPlan,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -212,7 +286,13 @@
       }
     } catch (err) {
       console.error('Upgrade error:', err);
-      error = 'Terjadi kesalahan saat memproses upgrade';
+      
+      if (err.message?.includes('Gagal menghubungi server')) {
+        error = 'Gagal menghubungi server saat memproses upgrade. Silakan coba lagi.';
+      } else {
+        error = 'Terjadi kesalahan saat memproses upgrade. Silakan coba lagi.';
+      }
+      
       processing = false;
     }
   }
@@ -227,13 +307,10 @@
 
   async function loadSuccessInfo() {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/upgrade/success?token=${token}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      const response = await fetchWithRetry(
+        `${apiBaseUrl}/api/upgrade/success?token=${token}`,
+        { method: 'GET' }
+      );
 
       const data = await response.json();
 
@@ -247,7 +324,13 @@
       }
     } catch (err) {
       console.error('Load success info error:', err);
-      error = 'Terjadi kesalahan saat memuat informasi';
+      
+      if (err.message?.includes('Gagal menghubungi server')) {
+        error = 'Gagal menghubungi server saat memuat informasi. Silakan coba lagi.';
+      } else {
+        error = 'Terjadi kesalahan saat memuat informasi. Silakan coba lagi.';
+      }
+      
       loading = false;
     }
   }
