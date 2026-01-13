@@ -140,6 +140,7 @@
       free: 'badge-free',
       pro: 'badge-pro',
       vip: 'badge-vip',
+      unlimited: 'badge-unlimited',
     }[plan] || '';
   }
 
@@ -1148,6 +1149,11 @@
 
   .badge-vip {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #fff;
+  }
+
+  .badge-unlimited {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     color: #fff;
   }
 

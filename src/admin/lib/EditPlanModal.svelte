@@ -98,6 +98,14 @@
                 <div class="plan-desc">Rp 79rb/bulan</div>
               </div>
             </label>
+            
+            <label class="plan-option {selectedPlan === 'unlimited' ? 'selected' : ''}" for="plan-unlimited">
+              <input type="radio" id="plan-unlimited" bind:group={selectedPlan} value="unlimited" disabled={loading} />
+              <div class="plan-content">
+                <div class="plan-name">Unlimited</div>
+                <div class="plan-desc">Akses seumur hidup (Lifetime)</div>
+              </div>
+            </label>
           </div>
         </div>
       </div>
@@ -294,6 +302,11 @@
   
   .badge-vip {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #fff;
+  }
+  
+  .badge-unlimited {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     color: #fff;
   }
   

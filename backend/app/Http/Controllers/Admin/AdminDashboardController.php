@@ -217,7 +217,7 @@ class AdminDashboardController extends Controller
     public function updateUserPlan(Request $request, $id)
     {
         $request->validate([
-            'plan' => 'required|in:free,pro,vip',
+            'plan' => 'required|in:free,pro,vip,unlimited',
         ]);
 
         $user = User::find($id);
