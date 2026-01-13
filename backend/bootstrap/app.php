@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
+        // Enable CORS for web routes (needed for /admin/* routes)
+        $middleware->web(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+        
         $middleware->alias([
             'api.key' => ApiKeyAuth::class,
             'admin.auth' => AdminAuth::class,
