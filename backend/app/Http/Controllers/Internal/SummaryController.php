@@ -164,8 +164,140 @@ class SummaryController extends Controller
     }
 
     /**
-     * Normalize phone number (same as UserController for consistency)
+     * GET /internal/summary/statistics-by-category
+     * Return statistics by category for current month (for "statistik" or "top kategori").
+     * Requires phone_number query parameter and active subscription.
      */
+    public function statisticsByCategory(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2020|max:2100',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
+
+        // Get user
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check subscription active
+        if (!$user->isSubscriptionActive()) {
+            return $this->subscriptionExpiredResponse($user, 'rekap_detail');
+        }
+
+        $now = Carbon::now(config('app.timezone'));
+        $month = $request->input('month', $now->month);
+        $year = $request->input('year', $now->year);
+
+        $startOfMonth = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
+        // Get all expense transactions for the month
+        $expenses = $user->transactions()
+            ->where('type', 'expense')
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $totalExpense = $expenses->sum('amount');
+
+        // Group by category
+        $categoryStats = $expenses->groupBy('category')->map(function ($transactions, $category) use ($totalExpense) {
+            $categoryTotal = $transactions->sum('amount');
+            $percentage = $totalExpense > 0 ? round(($categoryTotal / $totalExpense) * 100, 1) : 0;
+            
+            return [
+                'category' => $category ?? 'Lainnya',
+                'total' => (int) $categoryTotal,
+                'count' => $transactions->count(),
+                'percentage' => $percentage,
+            ];
+        })->values()->sortByDesc('total')->values();
+
+        return response()->json([
+            'success' => true,
+            'period' => Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM YYYY'),
+            'data' => [
+                'statistics' => $categoryStats,
+                'total_expense' => (int) $totalExpense,
+                'total_categories' => $categoryStats->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /internal/summary/by-category
+     * Return transactions filtered by category (for "rekap [kategori]").
+     * Requires phone_number and category query parameters and active subscription.
+     */
+    public function byCategory(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|min:8|max:20',
+            'category' => 'required|string|in:Makan,Minuman,Transport,Belanja,Hiburan,Kesehatan,Tagihan,Lainnya',
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2020|max:2100',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
+        $phone = PhoneHelper::normalize($request->input('phone_number'));
+
+        // Get user
+        $user = User::where('phone_number', $phone)->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found', ['phone_number' => ['User not registered']], 404);
+        }
+
+        // Check subscription active
+        if (!$user->isSubscriptionActive()) {
+            return $this->subscriptionExpiredResponse($user, 'rekap_detail');
+        }
+
+        $now = Carbon::now(config('app.timezone'));
+        $month = $request->input('month', $now->month);
+        $year = $request->input('year', $now->year);
+        $category = $request->input('category');
+
+        $startOfMonth = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
+        // Query transactions filtered by category
+        $transactions = $user->transactions()
+            ->where('category', $category)
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'description', 'amount', 'type', 'category', 'tanggal', 'created_at']);
+
+        $total = $transactions->sum('amount');
+        $totalExpense = $transactions->where('type', 'expense')->sum('amount');
+        $totalIncome = $transactions->where('type', 'income')->sum('amount');
+
+        return response()->json([
+            'success' => true,
+            'period' => Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM YYYY'),
+            'data' => [
+                'category' => $category,
+                'transactions' => $transactions,
+                'total' => (int) $total,
+                'total_expense' => (int) $totalExpense,
+                'total_income' => (int) $totalIncome,
+                'count' => $transactions->count(),
+            ],
+        ]);
+    }
 
     /**
      * Error response helper

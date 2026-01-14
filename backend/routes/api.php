@@ -73,6 +73,8 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     Route::get('/summary/today', [SummaryController::class, 'today']);
     Route::get('/summary/today-detail', [SummaryController::class, 'todayDetail']);
     Route::get('/summary/month-balance', [SummaryController::class, 'monthBalance']);
+    Route::get('/summary/statistics-by-category', [SummaryController::class, 'statisticsByCategory']);
+    Route::get('/summary/by-category', [SummaryController::class, 'byCategory']);
     
     // Report endpoints
     Route::post('/reports/pdf-expense-monthly', [ReportController::class, 'generateExpenseMonthlyPdf']);
