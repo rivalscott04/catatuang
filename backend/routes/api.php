@@ -9,6 +9,7 @@ use App\Http\Controllers\Internal\SubscriptionController;
 use App\Http\Controllers\Internal\ReportController;
 use App\Http\Controllers\Internal\UploadController;
 use App\Http\Controllers\Internal\UpgradeController as InternalUpgradeController;
+use App\Http\Controllers\Internal\BudgetController;
 use App\Http\Controllers\UpgradeController;
 use App\Http\Controllers\PakasirWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,10 @@ Route::middleware(['api.key'])->prefix('internal')->group(function () {
     Route::post('/uploads/download-image', [UploadController::class, 'downloadImage']);
     Route::post('/uploads/confirm', [UploadController::class, 'confirm']);
     Route::get('/uploads/pending', [UploadController::class, 'getPending']);
+    
+    // Budget endpoints
+    Route::post('/budget/set', [BudgetController::class, 'set']);
+    Route::get('/budget/get', [BudgetController::class, 'get']);
     
     // Upgrade endpoints (for n8n)
     Route::get('/upgrade/generate-link', [InternalUpgradeController::class, 'generateLink']);

@@ -43,6 +43,14 @@ class User extends Model
     }
 
     /**
+     * Get budgets for this user
+     */
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
+    }
+
+    /**
      * Check if user has transaction today
      */
     public function hasTransactionToday(): bool

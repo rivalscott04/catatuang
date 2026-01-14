@@ -28,7 +28,7 @@ class ReminderController extends Controller
             ->whereDoesntHave('transactions', function ($query) use ($today) {
                 $query->whereDate('tanggal', $today);
             })
-            ->select('phone_number')
+            ->select('phone_number', 'name', 'response_style')
             ->get();
 
         return response()->json([
@@ -37,6 +37,8 @@ class ReminderController extends Controller
             'items' => $users->map(function ($user) {
                 return [
                     'phone_number' => $user->phone_number,
+                    'name' => $user->name ?? 'Teman',
+                    'response_style' => $user->response_style ?? 'santai',
                 ];
             }),
         ]);
